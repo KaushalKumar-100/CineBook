@@ -17,12 +17,7 @@ Copy-Item .env.example .env
 
 Edit `backend/.env` locally. Set your MySQL user/password and replace `SECRET_KEY` with a long random secret. Keep `.env` private.
 
-Create the database in Workbench:
-
-```sql
-CREATE DATABASE IF NOT EXISTS cinebook_db
-  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
+Create the database in Workbench by running `backend/sql/schema.sql` (it creates the database and all 13 tables). Then optionally run `backend/sql/seed_demo.sql` to insert Guwahati/Tezpur/Delhi, event categories, a demo cinema, a sample movie, 40 seats, and a future show. Both files can be run from MySQL Workbench.
 
 Start in `backend/`:
 
@@ -36,7 +31,7 @@ URLs:
 - http://127.0.0.1:8000/health/db
 - http://127.0.0.1:8000/health/schema
 
-For local coursework, missing tables are auto-created only when `APP_ENV=development` and `DEMO_MODE=true`. Disable this mode in other environments and use versioned migrations.
+For local coursework, missing tables are auto-created only when `APP_ENV=development` and `DEMO_MODE=true`. Disable this mode outside local development. The project currently provides a complete initial SQL DDL script; a versioned migration history is a future hardening step.
 
 ## API reference
 ### Authentication
@@ -56,8 +51,8 @@ For local coursework, missing tables are auto-created only when `APP_ENV=develop
 
 ### Organizer/admin
 - `POST /api/v1/manage/cities` (admin)
-- `POST /api/v1/manage/venues` (admin/organizer)
-- `POST /api/v1/manage/venue-spaces` (admin/organizer)
+- `POST /api/v1/manage/venues` (admin only; no venue ownership table is currently modeled)
+- `POST /api/v1/manage/venue-spaces` (admin/organizer; organizers must manage an event at the venue)
 - `POST /api/v1/manage/movies` (admin)
 - `POST /api/v1/manage/event-categories` (admin)
 - `POST /api/v1/manage/events` (admin/organizer)
