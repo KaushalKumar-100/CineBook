@@ -1,11 +1,11 @@
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 
 from app.dependencies import DbSession
-from app.models import City, Event, EventCategory, Movie, SessionEvent, Venue, VenueSpace
+from app.models import Booking, BookingItem, City, Event, EventCategory, Movie, Seat, SessionEvent, TicketType, Venue, VenueSpace
 
 router = APIRouter(tags=["Discovery"])
 
@@ -74,6 +74,73 @@ def list_events(
 def list_categories(db: DbSession):
     return db.scalars(select(EventCategory).order_by(EventCategory.name)).all()
 
+
+
+@router.get("/sessions/{session_id}/availability")
+def session_availability(session_id: int, db: DbSession):
+    session = db.get(SessionEvent, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    booked_seat_ids = set(db.scalars(
+        select(BookingItem.seat_id)
+        .join(Booking, BookingItem.booking_id == Booking.id)
+        .where(
+            Booking.session_id == session_id,
+            Booking.status == "confirmed",
+            BookingItem.seat_id.is_not(None),
+        )
+    ).all())
+    seats = db.scalars(
+        select(Seat)
+        .where(Seat.venue_space_id == session.venue_space_id)
+        .order_by(Seat.row_label, Seat.seat_number)
+    ).all()
+    ticket_types = db.scalars(
+        select(TicketType)
+        .where(TicketType.session_id == session_id, TicketType.is_active.is_(True))
+        .order_by(TicketType.price, TicketType.name)
+    ).all()
+    ticket_availability = []
+    for ticket in ticket_types:
+        sold = db.scalar(
+            select(func.coalesce(func.sum(BookingItem.quantity), 0))
+            .join(Booking, BookingItem.booking_id == Booking.id)
+            .where(
+                Booking.session_id == session_id,
+                Booking.status == "confirmed",
+                BookingItem.ticket_type_id == ticket.id,
+            )
+        ) or 0
+        ticket_availability.append({
+            "id": ticket.id,
+            "name": ticket.name,
+            "description": ticket.description,
+            "price": ticket.price,
+            "capacity": ticket.capacity,
+            "remaining": max(0, ticket.capacity - sold),
+        })
+    return {
+        "session_id": session.id,
+        "event_id": session.event_id,
+        "movie_id": session.movie_id,
+        "venue_space_id": session.venue_space_id,
+        "starts_at": session.starts_at,
+        "ends_at": session.ends_at,
+        "base_price": session.base_price,
+        "status": session.status,
+        "booking_mode": "seats" if session.movie_id is not None else "general_admission",
+        "seats": [
+            {
+                "id": seat.id,
+                "row_label": seat.row_label,
+                "seat_number": seat.seat_number,
+                "seat_type": seat.seat_type,
+                "available": seat.id not in booked_seat_ids,
+            }
+            for seat in seats
+        ],
+        "ticket_types": ticket_availability,
+    }
 
 @router.get("/sessions")
 def list_sessions(
