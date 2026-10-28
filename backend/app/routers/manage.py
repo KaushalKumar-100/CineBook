@@ -55,8 +55,6 @@ def create_ticket_type(payload: TicketTypeCreate, db: DbSession, _: Annotated[Us
         raise HTTPException(status_code=422, detail="Ticket capacity cannot exceed the venue space capacity")
     if session.movie_id is not None:
         raise HTTPException(status_code=422, detail="Cinema sessions use numbered seats; ticket types are for general admission events")
-    if session.movie_id is not None:
-        raise HTTPException(status_code=422, detail="Cinema sessions use numbered seats; ticket types are for general admission events")
     item = TicketType(**payload.model_dump())
     db.add(item)
     return save(db, item)
