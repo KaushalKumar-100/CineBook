@@ -17,14 +17,14 @@ router = APIRouter(prefix="/bookings", tags=["Bookings"])
 @router.post("", response_model=BookingOut, status_code=status.HTTP_201_CREATED)
 def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, Depends(get_current_user)]):
     # Validate allocation choice before creating any records.
-    has_seats = bool(payload.seat_ids)
+    has_seats = payload.seat_ids is not None
     has_ticket = payload.ticket_type_id is not None
     if has_seats == has_ticket:
         raise HTTPException(status_code=422, detail="Choose either seat_ids or ticket_type_id")
+    if has_seats and not payload.seat_ids:
+        raise HTTPException(status_code=422, detail="seat_ids cannot be empty")
     if has_seats and payload.quantity != 1:
         raise HTTPException(status_code=422, detail="Use quantity=1 when booking assigned seats")
-    if payload.seat_ids is not None and len(payload.seat_ids) == 0:
-        raise HTTPException(status_code=422, detail="seat_ids cannot be empty")
 
     try:
         # Serialize booking attempts for the same scheduled session on MySQL/InnoDB.
