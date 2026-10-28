@@ -2,7 +2,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from app.dependencies import DbSession, require_roles
-from app.models import City, Event, EventCategory, Movie, SessionEvent, TicketType, User, Venue, VenueSpace
+from app.models import City, Event, EventCategory, Movie, Seat, SessionEvent, TicketType, User, Venue, VenueSpace
 from app.schemas import CategoryCreate, CityCreate, EventCreate, MovieCreate, SessionCreate, TicketTypeCreate, VenueCreate, VenueSpaceCreate
 
 router = APIRouter(prefix="/manage", tags=["Organizer and Admin"])
@@ -61,7 +61,6 @@ def create_ticket_type(payload: TicketTypeCreate, db: DbSession, _: Annotated[Us
 
 @router.post("/seats/bulk", status_code=status.HTTP_201_CREATED)
 def create_seats(venue_space_id: int, rows: list[str], seats_per_row: int, db: DbSession, _: Annotated[User, Depends(require_roles("admin", "organizer"))]):
-    from app.models import Seat
     if not db.get(VenueSpace, venue_space_id):
         raise HTTPException(status_code=404, detail="Venue space not found")
     if not rows or len(rows) > 100 or seats_per_row < 1 or seats_per_row > 1000:
