@@ -9,6 +9,7 @@ from getpass import getpass
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.config import get_settings
 from app.database import Base, SessionLocal, engine
 from app.models import (
     City, Event, EventCategory, Movie, Seat, SessionEvent, TicketType,
@@ -99,6 +100,9 @@ def ensure_ticket_type(db, session: SessionEvent, name: str, description: str, p
 
 
 def main() -> None:
+    settings = get_settings()
+    if settings.app_env != "development" or not settings.demo_mode:
+        raise SystemExit("Demo seeding is allowed only when APP_ENV=development and DEMO_MODE=true.")
     Base.metadata.create_all(bind=engine)
     display_name = input("Demo organizer display name: ").strip() or "CineBook Demo Organizer"
     email = input("Organizer email (local demo account): ").strip().lower()
