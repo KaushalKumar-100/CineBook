@@ -1,33 +1,26 @@
-import os
+from collections.abc import Generator
+from urllib.parse import quote_plus
 
-from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
-load_dotenv()
+from app.config import get_settings
 
-DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
-DB_PORT = os.getenv("DB_PORT", "3306")
-DB_NAME = os.getenv("DB_NAME", "cinebook_db")
-DB_USER = os.getenv("DB_USER", "root")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "")
-
+settings = get_settings()
 DATABASE_URL = (
-    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}"
-    f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    "?charset=utf8mb4"
+    f"mysql+pymysql://{quote_plus(settings.db_user)}:{quote_plus(settings.db_password)}"
+    f"@{settings.db_host}:{settings.db_port}/{settings.db_name}?charset=utf8mb4"
 )
 
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
-    echo=False,
+    pool_recycle=1800,
+    echo=settings.db_echo,
+    connect_args={"connect_timeout": 5},
 )
-
 SessionLocal = sessionmaker(
-    bind=engine,
-    autoflush=False,
-    autocommit=False,
+    bind=engine, class_=Session, autoflush=False, expire_on_commit=False
 )
 
 
@@ -35,7 +28,18 @@ class Base(DeclarativeBase):
     pass
 
 
-def test_connection():
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def test_connection() -> str:
     with engine.connect() as connection:
         result = connection.execute(text("SELECT DATABASE()"))
-        return result.scalar()
+        database_name = result.scalar()
+        if not database_name:
+            raise RuntimeError("Connected but no database is selected")
+        return str(database_name)
