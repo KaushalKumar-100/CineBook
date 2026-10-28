@@ -95,6 +95,24 @@ export default function App() {
   const [saved, setSaved] = useState([]);
   const [selected, setSelected] = useState(null);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [token, setToken] = useState(() => localStorage.getItem("cinebook-token") || "");
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState("login");
+  const [authName, setAuthName] = useState("");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [availableSessions, setAvailableSessions] = useState([]);
+  const [selectedSessionId, setSelectedSessionId] = useState("");
+  const [sessionAvailability, setSessionAvailability] = useState(null);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [selectedSeats, setSelectedSeats] = useState([]);
+  const [selectedTicketTypeId, setSelectedTicketTypeId] = useState("");
+  const [bookingQuantity, setBookingQuantity] = useState(1);
+  const [bookingBusy, setBookingBusy] = useState(false);
+  const [bookingError, setBookingError] = useState("");
 
   useEffect(() => {
     const fromStorage = localStorage.getItem("cinebook-saved");
@@ -106,6 +124,55 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("cinebook-saved", JSON.stringify(saved));
   }, [saved]);
+
+  useEffect(() => {
+    if (!token) {
+      setCurrentUser(null);
+      localStorage.removeItem("cinebook-token");
+      return;
+    }
+    localStorage.setItem("cinebook-token", token);
+    let cancelled = false;
+    fetch(`${API_BASE}/api/v1/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((response) => {
+        if (!response.ok) throw new Error("Your session expired. Please sign in again.");
+        return response.json();
+      })
+      .then((user) => { if (!cancelled) setCurrentUser(user); })
+      .catch(() => {
+        if (!cancelled) {
+          setCurrentUser(null);
+          setToken("");
+          localStorage.removeItem("cinebook-token");
+        }
+      });
+    return () => { cancelled = true; };
+  }, [token]);
+
+  useEffect(() => {
+    if (!selectedSessionId || !selected || selected.demo) {
+      setSessionAvailability(null);
+      return;
+    }
+    let cancelled = false;
+    setAvailabilityLoading(true);
+    setBookingError("");
+    setSelectedSeats([]);
+    setSelectedTicketTypeId("");
+    fetch(`${API_BASE}/api/v1/sessions/${selectedSessionId}/availability`)
+      .then((response) => {
+        if (!response.ok) throw new Error("Could not load availability for this session.");
+        return response.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setSessionAvailability(data);
+        if (data.ticket_types?.length) setSelectedTicketTypeId(String(data.ticket_types[0].id));
+      })
+      .catch((error) => { if (!cancelled) setBookingError(error.message); })
+      .finally(() => { if (!cancelled) setAvailabilityLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedSessionId, selected]);
 
   useEffect(() => {
     let cancelled = false;
@@ -148,8 +215,111 @@ export default function App() {
     setSearch(category);
     document.getElementById("discover")?.scrollIntoView({ behavior: "smooth" });
   }
-  function bookItem(item) {
+  async function bookItem(item) {
     setSelected(item);
+    setBookingError("");
+    setAvailableSessions([]);
+    setSelectedSessionId("");
+    setSessionAvailability(null);
+    setSelectedSeats([]);
+    setSelectedTicketTypeId("");
+    setBookingQuantity(1);
+    if (item.demo) return;
+    try {
+      const isEvent = item.event_type === "local" || item.event_type === "major";
+      const query = isEvent ? `event_id=${item.id}` : `movie_id=${item.id}`;
+      const response = await fetch(`${API_BASE}/api/v1/sessions?${query}`);
+      if (!response.ok) throw new Error("Could not load sessions. Please try again.");
+      const data = await response.json();
+      setAvailableSessions(Array.isArray(data) ? data : []);
+      if (Array.isArray(data) && data.length) setSelectedSessionId(String(data[0].id));
+      else setBookingError("No upcoming sessions are available for this listing yet.");
+    } catch (error) {
+      setBookingError(error.message || "Could not load sessions.");
+    }
+  }
+
+  async function submitAuth(event) {
+    event.preventDefault();
+    setAuthBusy(true);
+    setAuthError("");
+    try {
+      if (authMode === "register") {
+        const registerResponse = await fetch(`${API_BASE}/api/v1/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: authName, email: authEmail, password: authPassword }),
+        });
+        if (!registerResponse.ok) {
+          const body = await registerResponse.json().catch(() => ({}));
+          throw new Error(body.detail || "Could not create the account.");
+        }
+      }
+      const loginResponse = await fetch(`${API_BASE}/api/v1/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ username: authEmail, password: authPassword }),
+      });
+      if (!loginResponse.ok) {
+        const body = await loginResponse.json().catch(() => ({}));
+        throw new Error(body.detail || "Sign-in failed. Check your email and password.");
+      }
+      const data = await loginResponse.json();
+      setToken(data.access_token);
+      setAuthOpen(false);
+      setAuthPassword("");
+      setNotice("You're signed in. You can continue booking.");
+    } catch (error) {
+      setAuthError(error.message || "Authentication failed.");
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function submitBooking() {
+    if (!token) {
+      setAuthError("");
+      setAuthOpen(true);
+      setNotice("Sign in to complete your booking.");
+      return;
+    }
+    if (!selected || selected.demo) {
+      setBookingError("Preview listings cannot be booked. Add a real listing and session in the backend first.");
+      return;
+    }
+    if (!selectedSessionId || !sessionAvailability) {
+      setBookingError("Choose an upcoming session first.");
+      return;
+    }
+    const isSeats = sessionAvailability.booking_mode === "seats";
+    if (isSeats && selectedSeats.length === 0) {
+      setBookingError("Select at least one available seat.");
+      return;
+    }
+    if (!isSeats && !selectedTicketTypeId) {
+      setBookingError("Choose a ticket type.");
+      return;
+    }
+    const payload = isSeats
+      ? { session_id: Number(selectedSessionId), seat_ids: selectedSeats }
+      : { session_id: Number(selectedSessionId), ticket_type_id: Number(selectedTicketTypeId), quantity: Number(bookingQuantity) };
+    setBookingBusy(true);
+    setBookingError("");
+    try {
+      const response = await fetch(`${API_BASE}/api/v1/bookings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || "Booking failed. Please check availability and retry.");
+      setSelected(null);
+      setNotice(`Booking ${data.booking_reference} confirmed · ₹${Number(data.total_amount).toFixed(2)} (demo payment)`);
+    } catch (error) {
+      setBookingError(error.message || "Booking failed.");
+    } finally {
+      setBookingBusy(false);
+    }
   }
 
   return (
@@ -166,7 +336,7 @@ export default function App() {
         </nav>
         <div className="top-actions">
           <label className="city-select"><MapPin size={16} /><select value={city} onChange={(event) => setCity(event.target.value)} aria-label="Choose city"><option>All cities</option>{cities.map((item) => <option key={item.id}>{item.name}</option>)}{!cities.some((item) => item.name === "Guwahati") && <option>Guwahati</option>}{!cities.some((item) => item.name === "Tezpur") && <option>Tezpur</option>}</select></label>
-          <button className="profile-button" onClick={() => setNotice("Account sign-in is available through the backend API; a dedicated account screen is the next frontend extension.")}><CircleUserRound size={19} /><span>Sign in</span></button>
+          {currentUser ? <button className="profile-button" onClick={() => { setToken(""); setCurrentUser(null); setNotice("You have signed out."); }}><CircleUserRound size={19} /><span>{currentUser.name?.split(" ")[0] || "Account"} · Sign out</span></button> : <button className="profile-button" onClick={() => { setAuthMode("login"); setAuthError(""); setAuthOpen(true); }}><CircleUserRound size={19} /><span>Sign in</span></button>}
           <button className="icon-button mobile-menu-button" onClick={() => setMobileMenu((value) => !value)} aria-label="Toggle navigation">{mobileMenu ? <X /> : <Menu />}</button>
         </div>
       </header>
@@ -227,7 +397,26 @@ export default function App() {
       <footer className="footer"><a className="brand footer-brand" href="#"><span className="brand-mark"><Ticket size={18} /></span><span>Cine<span>Book</span><small>YOUR CITY. YOUR SCENE.</small></span></a><p>Made for the moments you’ll remember.</p><div><span className={`api-indicator ${apiOnline ? "online" : ""}`}></span>{apiOnline ? "Connected to local API" : "Showing preview data"}</div><small>© 2026 CineBook · DBMS project</small></footer>
 
       {notice && <div className="toast" role="status"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Dismiss"><X size={16} /></button></div>}
-      {selected && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><div className="detail-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button className="icon-button modal-close" onClick={() => setSelected(null)} aria-label="Close"><X /></button><ImageOrFallback src={selected.poster_url} alt={selected.title} className="modal-poster" /><div className="modal-content"><span className="mini-label">{selected.demo ? "PREVIEW LISTING" : selected.language || selected.category?.name || "CINEBOOK"}</span><h2 id="modal-title">{selected.title}</h2><p>{selected.description || selected.synopsis || "Explore the details and upcoming sessions for this listing."}</p>{selected.event_type && <div className="modal-fact"><MapPin size={16} />{selected.venue?.name || "Venue details"} · {selected.city?.name || "City details"}</div>}{selected.starts_at && <div className="modal-fact"><CalendarDays size={16} />{prettyDate(selected.starts_at)} · {prettyTime(selected.starts_at)}</div>}<div className="modal-actions"><button className="primary-button" onClick={() => setNotice(selected.demo ? "This is preview content. Connect the backend and add a future session to enable real bookings." : "Choose a session from the booking API to continue.")}> <Ticket size={17} /> {selected.demo ? "Preview only" : "Check availability"}</button><button className="secondary-button" onClick={() => { toggleSaved(selected.id); setNotice(saved.includes(selected.id) ? "Removed from saved listings." : "Saved for later."); }}><Heart size={16} /> Save</button></div></div></div></div>}
+
+      {authOpen && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setAuthOpen(false); }}><div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><button className="icon-button modal-close" onClick={() => setAuthOpen(false)} aria-label="Close"><X /></button><span className="mini-label">WELCOME TO CINEBOOK</span><h2 id="auth-title">{authMode === "login" ? "Good to see you." : "Create your account."}</h2><p className="auth-subtitle">{authMode === "login" ? "Sign in to save your plans and book tickets." : "Join CineBook and discover things happening around you."}</p><form className="auth-form" onSubmit={submitAuth}>{authMode === "register" && <label>Full name<input value={authName} onChange={(event) => setAuthName(event.target.value)} minLength={2} required autoComplete="name" /></label>}<label>Email address<input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} required autoComplete="email" /></label><label>Password<input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} minLength={8} required autoComplete={authMode === "login" ? "current-password" : "new-password"} /></label>{authError && <p className="form-error" role="alert">{authError}</p>}<button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? "Please wait..." : authMode === "login" ? "Sign in" : "Create account"}</button></form><p className="auth-switch">{authMode === "login" ? "New to CineBook?" : "Already have an account?"} <button onClick={() => { setAuthMode(authMode === "login" ? "register" : "login"); setAuthError(""); }}> {authMode === "login" ? "Create account" : "Sign in"}</button></p></div></div>}
+
+      {selected && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><div className="detail-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button className="icon-button modal-close" onClick={() => setSelected(null)} aria-label="Close"><X /></button><ImageOrFallback src={selected.poster_url} alt={selected.title} className="modal-poster" /><div className="modal-content"><span className="mini-label">{selected.demo ? "PREVIEW LISTING" : selected.language || selected.category?.name || "CINEBOOK"}</span><h2 id="modal-title">{selected.title}</h2><p>{selected.description || selected.synopsis || "Explore the details and upcoming sessions for this listing."}</p>{selected.event_type && <div className="modal-fact"><MapPin size={16} />{selected.venue?.name || "Venue details"} · {selected.city?.name || "City details"}</div>}
+
+        {selected.demo ? <div className="preview-note"><Sparkles size={17} /><span>This is sample preview content. Add a real listing and sessions to enable live availability and booking.</span></div> : <>
+          <label className="booking-label">Choose a session
+            <select value={selectedSessionId} onChange={(event) => setSelectedSessionId(event.target.value)}>
+              <option value="">Select session</option>
+              {availableSessions.map((item) => <option key={item.id} value={item.id}>{prettyDate(item.starts_at)} · {prettyTime(item.starts_at)} · ₹{Number(item.base_price).toFixed(2)}</option>)}
+            </select>
+          </label>
+          {availabilityLoading && <p className="booking-hint">Checking availability…</p>}
+          {sessionAvailability && sessionAvailability.booking_mode === "seats" && <div className="seat-picker"><div className="screen-label">SCREEN</div><div className="seat-grid">{sessionAvailability.seats.map((seat) => <button type="button" key={seat.id} title={`Row ${seat.row_label}, seat ${seat.seat_number}`} disabled={!seat.available} className={`seat ${seat.available ? "" : "unavailable"} ${selectedSeats.includes(seat.id) ? "chosen" : ""}`} onClick={() => setSelectedSeats((current) => current.includes(seat.id) ? current.filter((id) => id !== seat.id) : [...current, seat.id])}>{seat.row_label}{seat.seat_number}</button>)}</div><p className="booking-hint">{selectedSeats.length} seat(s) selected · ₹{(selectedSeats.length * Number(sessionAvailability.base_price)).toFixed(2)}</p></div>}
+          {sessionAvailability && sessionAvailability.booking_mode === "general_admission" && <div className="ticket-picker"><label className="booking-label">Ticket category<select value={selectedTicketTypeId} onChange={(event) => setSelectedTicketTypeId(event.target.value)}><option value="">Choose ticket type</option>{sessionAvailability.ticket_types.map((ticket) => <option key={ticket.id} value={ticket.id} disabled={ticket.remaining < 1}>{ticket.name} · ₹{Number(ticket.price).toFixed(2)} · {ticket.remaining} left</option>)}</select></label><label className="booking-label">Quantity<select value={bookingQuantity} onChange={(event) => setBookingQuantity(Number(event.target.value))}>{Array.from({length: 10}, (_, index) => index + 1).map((amount) => <option key={amount} value={amount}>{amount}</option>)}</select></label>{sessionAvailability.ticket_types.find((ticket) => String(ticket.id) === selectedTicketTypeId) && <p className="booking-hint">Estimated total: ₹{(Number(sessionAvailability.ticket_types.find((ticket) => String(ticket.id) === selectedTicketTypeId).price) * bookingQuantity).toFixed(2)}</p>}</div>}
+          {bookingError && <p className="form-error" role="alert">{bookingError}</p>}
+          <div className="modal-actions"><button className="primary-button" disabled={bookingBusy || availabilityLoading || !sessionAvailability} onClick={submitBooking}><Ticket size={17} />{bookingBusy ? "Booking…" : token ? "Confirm booking" : "Sign in to book"}</button><button className="secondary-button" onClick={() => { toggleSaved(selected.id); setNotice(saved.includes(selected.id) ? "Removed from saved listings." : "Saved for later."); }}><Heart size={16} /> Save</button></div>
+          <p className="demo-payment-note">Academic demo checkout · Payments are simulated; no card details are collected.</p>
+        </>}
+      </div></div></div>}
     </div>
   );
 }
