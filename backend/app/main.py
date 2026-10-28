@@ -1,31 +1,53 @@
-from fastapi import FastAPI, HTTPException
-from sqlalchemy.exc import SQLAlchemyError
+from contextlib import asynccontextmanager
 
-from app.database import test_connection
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect
 
-app = FastAPI(title="CineBook API")
+from app import models  # noqa: F401
+from app.config import get_settings
+from app.database import Base, engine, test_connection
+from app.routers import auth, bookings, catalog, manage
+
+settings = get_settings()
 
 
-@app.get("/")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    if settings.app_env == "development" and settings.demo_mode:
+        Base.metadata.create_all(bind=engine)
+    yield
+
+
+app = FastAPI(
+    title=settings.app_name,
+    description="Movie, major-event and local-event discovery and ticket-booking API.",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+)
+
+
+@app.get("/", tags=["System"])
 def home():
-    return {
-        "message": "Welcome to CineBook API",
-        "status": "running",
-    }
+    return {"message": "Welcome to CineBook API", "status": "running", "docs": "/docs"}
 
 
-@app.get("/health/db")
+@app.get("/health/db", tags=["System"])
 def database_health():
-    try:
-        database_name = test_connection()
+    return {"status": "connected", "database": test_connection()}
 
-        return {
-            "status": "connected",
-            "database": database_name,
-        }
 
-    except SQLAlchemyError:
-        raise HTTPException(
-            status_code=503,
-            detail="Database connection failed. Check local configuration.",
-        )
+@app.get("/health/schema", tags=["System"])
+def schema_health():
+    return {"tables": sorted(inspect(engine).get_table_names())}
+
+
+app.include_router(auth.router, prefix=settings.api_prefix)
+app.include_router(catalog.router, prefix=settings.api_prefix)
+app.include_router(manage.router, prefix=settings.api_prefix)
+app.include_router(bookings.router, prefix=settings.api_prefix)
