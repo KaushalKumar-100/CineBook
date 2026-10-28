@@ -3,7 +3,7 @@ from decimal import Decimal
 from secrets import token_urlsafe
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
@@ -15,19 +15,22 @@ router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
 
 @router.post("", response_model=BookingOut, status_code=status.HTTP_201_CREATED)
-def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, Depends(get_current_user)]):
-    session = db.scalar(select(SessionEvent).where(
-        SessionEvent.id == payload.session_id, SessionEvent.status == "scheduled"
-    ).with_for_update())
-    if not session:
-        raise HTTPException(status_code=404, detail="Scheduled session not found")
-    if session.starts_at <= datetime.now():
-        raise HTTPException(status_code=409, detail="This session has already started")
-    if bool(payload.seat_ids) == bool(payload.ticket_type_id):
-        raise HTTPException(status_code=422, detail="Choose either seat_ids or ticket_type_id")
-    if payload.seat_ids is not None and payload.quantity != 1:
-        raise HTTPException(status_code=422, detail="Omit quantity when booking assigned seats")
+def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, __import__("fastapi").Depends(get_current_user)]):
+    if not payload.seat_ids and not payload.ticket_type_id:
+        raise HTTPException(status_code=422, detail="Provide seat_ids or ticket_type_id")
+    if payload.seat_ids and payload.ticket_type_id:
+        raise HTTPException(status_code=422, detail="Choose seats OR general-admission tickets, not both")
+    if payload.seat_ids and payload.quantity != 1:
+        raise HTTPException(status_code=422, detail="Use quantity=1 when selecting seats")
     try:
+        session = db.scalar(select(SessionEvent).where(
+            SessionEvent.id == payload.session_id, SessionEvent.status == "scheduled"
+        ).with_for_update())
+        if not session:
+            raise HTTPException(status_code=404, detail="Scheduled session not found")
+        if session.starts_at <= datetime.now():
+            raise HTTPException(status_code=409, detail="This session has already started")
+
         booking = Booking(
             booking_reference=token_urlsafe(12).replace("-", "").replace("_", "").upper()[:22],
             user_id=user.id, session_id=session.id, status="confirmed", total_amount=Decimal("0.00")
@@ -35,6 +38,7 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
         db.add(booking)
         db.flush()
         total = Decimal("0.00")
+
         if payload.seat_ids:
             if len(set(payload.seat_ids)) != len(payload.seat_ids):
                 raise HTTPException(status_code=422, detail="Duplicate seat IDs are not allowed")
@@ -53,9 +57,8 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
                 total += session.base_price
         else:
             ticket = db.scalar(select(TicketType).where(
-                TicketType.id == payload.ticket_type_id,
-                TicketType.session_id == session.id, TicketType.is_active.is_(True)
-            ).with_for_update())
+                TicketType.id == payload.ticket_type_id, TicketType.session_id == session.id,
+                TicketType.is_active.is_(True)).with_for_update())
             if not ticket:
                 raise HTTPException(status_code=404, detail="Ticket type not found for this session")
             sold = db.scalar(select(func.coalesce(func.sum(BookingItem.quantity), 0))
@@ -67,8 +70,9 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
             total = ticket.price * payload.quantity
             db.add(BookingItem(booking_id=booking.id, ticket_type_id=ticket.id,
                                quantity=payload.quantity, unit_price=ticket.price))
+
         booking.total_amount = total
-        # Explicit demo payment only; no real payment credentials or card data are collected.
+        # Local demonstration payment only. No real payment provider is connected.
         db.add(Payment(booking_id=booking.id, provider="demo", amount=total, status="succeeded"))
         db.commit()
         db.refresh(booking)
@@ -82,12 +86,12 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
 
 
 @router.get("/me", response_model=list[BookingOut])
-def my_bookings(db: DbSession, user: Annotated[User, Depends(get_current_user)]):
+def my_bookings(db: DbSession, user: Annotated[User, __import__("fastapi").Depends(get_current_user)]):
     return db.scalars(select(Booking).where(Booking.user_id == user.id).order_by(Booking.created_at.desc())).all()
 
 
 @router.get("/{booking_id}", response_model=BookingOut)
-def get_booking(booking_id: int, db: DbSession, user: Annotated[User, Depends(get_current_user)]):
+def get_booking(booking_id: int, db: DbSession, user: Annotated[User, __import__("fastapi").Depends(get_current_user)]):
     booking = db.get(Booking, booking_id)
     if not booking or (booking.user_id != user.id and user.role != "admin"):
         raise HTTPException(status_code=404, detail="Booking not found")
@@ -95,7 +99,7 @@ def get_booking(booking_id: int, db: DbSession, user: Annotated[User, Depends(ge
 
 
 @router.post("/{booking_id}/cancel", response_model=BookingOut)
-def cancel_booking(booking_id: int, db: DbSession, user: Annotated[User, Depends(get_current_user)]):
+def cancel_booking(booking_id: int, db: DbSession, user: Annotated[User, __import__("fastapi").Depends(get_current_user)]):
     booking = db.scalar(select(Booking).where(Booking.id == booking_id).with_for_update())
     if not booking or (booking.user_id != user.id and user.role != "admin"):
         raise HTTPException(status_code=404, detail="Booking not found")
@@ -109,7 +113,7 @@ def cancel_booking(booking_id: int, db: DbSession, user: Annotated[User, Depends
 
 
 @router.get("/{booking_id}/payments", response_model=list[PaymentOut])
-def booking_payments(booking_id: int, db: DbSession, user: Annotated[User, Depends(get_current_user)]):
+def booking_payments(booking_id: int, db: DbSession, user: Annotated[User, __import__("fastapi").Depends(get_current_user)]):
     booking = db.get(Booking, booking_id)
     if not booking or (booking.user_id != user.id and user.role != "admin"):
         raise HTTPException(status_code=404, detail="Booking not found")
