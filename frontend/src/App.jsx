@@ -113,6 +113,11 @@ export default function App() {
   const [bookingQuantity, setBookingQuantity] = useState(1);
   const [bookingBusy, setBookingBusy] = useState(false);
   const [bookingError, setBookingError] = useState("");
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [bookings, setBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingsError, setBookingsError] = useState("");
+  const [cancellingBookingId, setCancellingBookingId] = useState(null);
 
   useEffect(() => {
     const fromStorage = localStorage.getItem("cinebook-saved");
@@ -146,6 +151,32 @@ export default function App() {
           localStorage.removeItem("cinebook-token");
         }
       });
+    return () => { cancelled = true; };
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+      setBookings([]);
+      setBookingsError("");
+      setBookingsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setBookingsLoading(true);
+    setBookingsError("");
+    fetch(`${API_BASE}/api/v1/bookings/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(async (response) => {
+      const data = await response.json().catch(() => []);
+      if (!response.ok) throw new Error(data.detail || "Could not load your bookings.");
+      return data;
+    }).then((data) => {
+      if (!cancelled) setBookings(Array.isArray(data) ? data : []);
+    }).catch((error) => {
+      if (!cancelled) setBookingsError(error.message || "Could not load bookings.");
+    }).finally(() => {
+      if (!cancelled) setBookingsLoading(false);
+    });
     return () => { cancelled = true; };
   }, [token]);
 
@@ -276,6 +307,26 @@ export default function App() {
     }
   }
 
+  async function cancelBooking(bookingId) {
+    if (!token) return;
+    setCancellingBookingId(bookingId);
+    setBookingsError("");
+    try {
+      const response = await fetch(`${API_BASE}/api/v1/bookings/${bookingId}/cancel`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || "Could not cancel booking.");
+      setBookings((current) => current.map((booking) => booking.id === bookingId ? data : booking));
+      setNotice(`Booking ${data.booking_reference} cancelled. Demo refund record created.`);
+    } catch (error) {
+      setBookingsError(error.message || "Cancellation failed.");
+    } finally {
+      setCancellingBookingId(null);
+    }
+  }
+
   async function submitBooking() {
     if (!token) {
       setAuthError("");
@@ -336,7 +387,7 @@ export default function App() {
         </nav>
         <div className="top-actions">
           <label className="city-select"><MapPin size={16} /><select value={city} onChange={(event) => setCity(event.target.value)} aria-label="Choose city"><option>All cities</option>{cities.map((item) => <option key={item.id}>{item.name}</option>)}{!cities.some((item) => item.name === "Guwahati") && <option>Guwahati</option>}{!cities.some((item) => item.name === "Tezpur") && <option>Tezpur</option>}</select></label>
-          {currentUser ? <button className="profile-button" onClick={() => { setToken(""); setCurrentUser(null); setNotice("You have signed out."); }}><CircleUserRound size={19} /><span>{currentUser.name?.split(" ")[0] || "Account"} · Sign out</span></button> : <button className="profile-button" onClick={() => { setAuthMode("login"); setAuthError(""); setAuthOpen(true); }}><CircleUserRound size={19} /><span>Sign in</span></button>}
+          {currentUser ? <button className="profile-button" onClick={() => setAccountOpen(true)}><CircleUserRound size={19} /><span>{currentUser.name?.split(" ")[0] || "Account"}</span></button> : <button className="profile-button" onClick={() => { setAuthMode("login"); setAuthError(""); setAuthOpen(true); }}><CircleUserRound size={19} /><span>Sign in</span></button>}
           <button className="icon-button mobile-menu-button" onClick={() => setMobileMenu((value) => !value)} aria-label="Toggle navigation">{mobileMenu ? <X /> : <Menu />}</button>
         </div>
       </header>
@@ -397,6 +448,8 @@ export default function App() {
       <footer className="footer"><a className="brand footer-brand" href="#"><span className="brand-mark"><Ticket size={18} /></span><span>Cine<span>Book</span><small>YOUR CITY. YOUR SCENE.</small></span></a><p>Made for the moments you’ll remember.</p><div><span className={`api-indicator ${apiOnline ? "online" : ""}`}></span>{apiOnline ? "Connected to local API" : "Showing preview data"}</div><small>© 2026 CineBook · DBMS project</small></footer>
 
       {notice && <div className="toast" role="status"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Dismiss"><X size={16} /></button></div>}
+
+      {accountOpen && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setAccountOpen(false); }}><div className="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-title"><button className="icon-button modal-close" onClick={() => setAccountOpen(false)} aria-label="Close"><X /></button><span className="mini-label">YOUR CINEBOOK</span><h2 id="account-title">Your bookings.</h2><p className="account-email">Signed in as {currentUser?.email}</p>{bookingsError && <p className="form-error" role="alert">{bookingsError}</p>}{bookingsLoading ? <p className="booking-hint">Loading your booking history…</p> : bookings.length ? <div className="booking-list">{bookings.map((booking) => <article className="booking-record" key={booking.id}><div><span className="booking-reference">{booking.booking_reference}</span><span className={`booking-status status-${booking.status}`}>{booking.status}</span></div><p>Session #{booking.session_id} · ₹{Number(booking.total_amount).toFixed(2)}</p><small>Booking ID {booking.id}</small>{booking.status === "confirmed" && <button className="cancel-booking" disabled={cancellingBookingId === booking.id} onClick={() => cancelBooking(booking.id)}>{cancellingBookingId === booking.id ? "Cancelling…" : "Cancel booking"}</button>}</article>)}</div> : <div className="empty-bookings"><Ticket size={27} /><p>No bookings yet. Find a movie or event and book your first experience.</p></div>}<div className="account-actions"><button className="secondary-button" onClick={() => { setAccountOpen(false); setToken(""); setCurrentUser(null); setNotice("You have signed out."); }}>Sign out</button><button className="primary-button" onClick={() => setAccountOpen(false)}>Done</button></div></div></div>}
 
       {authOpen && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setAuthOpen(false); }}><div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><button className="icon-button modal-close" onClick={() => setAuthOpen(false)} aria-label="Close"><X /></button><span className="mini-label">WELCOME TO CINEBOOK</span><h2 id="auth-title">{authMode === "login" ? "Good to see you." : "Create your account."}</h2><p className="auth-subtitle">{authMode === "login" ? "Sign in to save your plans and book tickets." : "Join CineBook and discover things happening around you."}</p><form className="auth-form" onSubmit={submitAuth}>{authMode === "register" && <label>Full name<input value={authName} onChange={(event) => setAuthName(event.target.value)} minLength={2} required autoComplete="name" /></label>}<label>Email address<input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} required autoComplete="email" /></label><label>Password<input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} minLength={8} required autoComplete={authMode === "login" ? "current-password" : "new-password"} /></label>{authError && <p className="form-error" role="alert">{authError}</p>}<button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? "Please wait..." : authMode === "login" ? "Sign in" : "Create account"}</button></form><p className="auth-switch">{authMode === "login" ? "New to CineBook?" : "Already have an account?"} <button onClick={() => { setAuthMode(authMode === "login" ? "register" : "login"); setAuthError(""); }}> {authMode === "login" ? "Create account" : "Sign in"}</button></p></div></div>}
 
