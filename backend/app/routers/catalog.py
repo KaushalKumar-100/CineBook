@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import joinedload
 
 from app.dependencies import DbSession
@@ -79,8 +79,12 @@ def list_categories(db: DbSession):
 @router.get("/sessions/{session_id}/availability")
 def session_availability(session_id: int, db: DbSession):
     session = db.get(SessionEvent, session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+    if not session or session.status != "scheduled":
+        raise HTTPException(status_code=404, detail="Scheduled session not found")
+    if session.event_id is not None and (not session.event or session.event.status != "published"):
+        raise HTTPException(status_code=404, detail="Published event session not found")
+    if session.movie_id is not None and (not session.movie or not session.movie.is_active):
+        raise HTTPException(status_code=404, detail="Active movie session not found")
     booked_seat_ids = set(db.scalars(
         select(BookingItem.seat_id)
         .join(Booking, BookingItem.booking_id == Booking.id)
@@ -149,7 +153,17 @@ def list_sessions(
     movie_id: int | None = None,
     from_time: datetime | None = None,
 ):
-    stmt = select(SessionEvent).where(SessionEvent.status == "scheduled").order_by(SessionEvent.starts_at)
+    stmt = (
+        select(SessionEvent)
+        .outerjoin(Event, SessionEvent.event_id == Event.id)
+        .outerjoin(Movie, SessionEvent.movie_id == Movie.id)
+        .where(
+            SessionEvent.status == "scheduled",
+            or_(SessionEvent.event_id.is_(None), Event.status == "published"),
+            or_(SessionEvent.movie_id.is_(None), Movie.is_active.is_(True)),
+        )
+        .order_by(SessionEvent.starts_at)
+    )
     if event_id is not None:
         stmt = stmt.where(SessionEvent.event_id == event_id)
     if movie_id is not None:
