@@ -1,16 +1,27 @@
 # CineBook
 
-CineBook is a DBMS-focused ticket-booking platform inspired by BookMyShow. It supports cinema shows, major events and local experiences such as concerts, festivals, college fests, workshops, comedy events, and community activities.
+CineBook is a DBMS-focused ticket-booking platform inspired by BookMyShow. It supports cinema shows, major events, and local experiences such as concerts, festivals, college fests, workshops, comedy events, and community activities.
 
 ## Stack
-Python 3.11+, FastAPI, SQLAlchemy 2, MySQL 8+, PyMySQL, JWT bearer authentication, Argon2 password hashing, pytest.
+- Frontend: React + Vite
+- Backend: Python + FastAPI
+- ORM/database access: SQLAlchemy 2 + PyMySQL
+- Database: MySQL 8+
+- Authentication: JWT bearer tokens and Argon2 password hashing
+- Tests: pytest + GitHub Actions
+
+## Features
+- Customer registration, sign-in, password hashing, JWT authentication, and role checks.
+- Cities, venues, screens/spaces, movies, event categories, events, and scheduled sessions.
+- Discovery by title, city, category, event type, and session.
+- Numbered cinema seats and capacity-limited general-admission tickets.
+- Booking history, cancellation, and simulated payment/refund records.
+- Full MySQL DDL, repeatable SQL seed data, and an interactive major/local event demo seeder.
+- Responsive frontend with search/filtering, seat/ticket selection, and booking integration.
 
 ## Quick start (Windows)
-1. Create `cinebook_db` in MySQL Workbench:
-   ```sql
-   CREATE DATABASE IF NOT EXISTS cinebook_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   ```
-2. In PowerShell:
+1. Run `backend/sql/schema.sql` in MySQL Workbench.
+2. In PowerShell, create the backend environment:
    ```powershell
    cd backend
    py -m venv .venv
@@ -18,18 +29,15 @@ Python 3.11+, FastAPI, SQLAlchemy 2, MySQL 8+, PyMySQL, JWT bearer authenticatio
    pip install -r requirements.txt
    Copy-Item .env.example .env
    ```
-3. Edit `backend/.env` locally. Set MySQL credentials and replace `SECRET_KEY`. Never commit or share `.env`.
-4. Run from `backend/`: `uvicorn app.main:app --reload`.
-5. Open http://127.0.0.1:8000/docs.
+3. Edit `backend/.env` locally. Set the MySQL credentials and a long random `SECRET_KEY`. Never commit or share `.env`.
+4. From `backend/`, run `python -m scripts.seed_demo` and follow the prompts. The script creates an organizer account and sample movie/concert/workshop data.
+5. Start the API from `backend/` with `uvicorn app.main:app --reload`; open http://127.0.0.1:8000/docs.
+6. Open a second terminal, run `cd frontend`, `npm install`, and `npm run dev`. Open the URL printed by Vite (normally http://localhost:5173).
 
-## Features
-- Customer registration, secure password hashing, JWT login, and role checks.
-- Cities, venues, venue spaces/screens, movies, event categories, events, and scheduled sessions.
-- Discovery and filtering by city, category, type, title, and session.
-- Numbered-seat bookings and capacity-limited general admission.
-- Booking history, cancellation, and simulated payment/refund records.
-- SQLAlchemy relational model with keys, indexes, unique constraints, and check constraints.
+See [backend/README.md](backend/README.md) and [frontend/README.md](frontend/README.md) for full instructions.
 
-See [backend/README.md](backend/README.md) for API details and local setup.
-
-**Payments are simulated only.** No real payment provider or card data is used. The DBMS/API foundation is implemented; frontend UI and deployment are not included in this backend-only repository.
+## Important
+- Event and movie examples are fictional coursework data.
+- Payment and refund entries are simulated; no real payment gateway or card data is used.
+- `DEMO_MODE=true` enables local development table creation; keep the `.env` file private and do not use demo configuration in production.
+- Run `pytest` from `backend/`; GitHub Actions checks backend tests and builds the frontend.
