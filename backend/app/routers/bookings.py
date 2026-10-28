@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.dependencies import DbSession, get_current_user
-from app.models import Booking, BookingItem, Payment, Seat, SessionEvent, TicketType, User, VenueSpace
+from app.models import Booking, BookingItem, Event, Movie, Payment, Seat, SessionEvent, TicketType, User, VenueSpace
 from app.schemas import BookingCreate, BookingOut, PaymentOut
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
@@ -33,6 +33,14 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
         ).with_for_update())
         if not session:
             raise HTTPException(status_code=404, detail="Scheduled session not found")
+        if session.event_id is not None:
+            event = db.get(Event, session.event_id)
+            if not event or event.status != "published":
+                raise HTTPException(status_code=404, detail="Published event session not found")
+        if session.movie_id is not None:
+            movie = db.get(Movie, session.movie_id)
+            if not movie or not movie.is_active:
+                raise HTTPException(status_code=404, detail="Active movie session not found")
         if session.starts_at <= datetime.now():
             raise HTTPException(status_code=409, detail="This session has already started")
 
