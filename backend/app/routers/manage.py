@@ -29,16 +29,21 @@ def create_city(payload: CityCreate, db: DbSession, _: Annotated[User, Depends(r
 
 
 @router.post("/venues", status_code=status.HTTP_201_CREATED)
-def create_venue(payload: VenueCreate, db: DbSession, _: Annotated[User, Depends(require_roles("admin", "organizer"))]):
+def create_venue(payload: VenueCreate, db: DbSession, _: Annotated[User, Depends(require_roles("admin"))]):
     item = Venue(**payload.model_dump())
     db.add(item)
     return save(db, item)
 
 
 @router.post("/venue-spaces", status_code=status.HTTP_201_CREATED)
-def create_space(payload: VenueSpaceCreate, db: DbSession, _: Annotated[User, Depends(require_roles("admin", "organizer"))]):
-    if not db.get(Venue, payload.venue_id):
+def create_space(payload: VenueSpaceCreate, db: DbSession, user: Annotated[User, Depends(require_roles("admin", "organizer"))]):
+    venue = db.get(Venue, payload.venue_id)
+    if not venue:
         raise HTTPException(status_code=404, detail="Venue not found")
+    if user.role == "organizer":
+        owns_venue = db.scalar(select(Event.id).where(Event.organizer_id == user.id, Event.venue_id == venue.id).limit(1))
+        if not owns_venue:
+            raise HTTPException(status_code=403, detail="You do not manage this venue")
     item = VenueSpace(**payload.model_dump())
     db.add(item)
     return save(db, item)
@@ -46,7 +51,9 @@ def create_space(payload: VenueSpaceCreate, db: DbSession, _: Annotated[User, De
 
 @router.post("/movies", status_code=status.HTTP_201_CREATED)
 def create_movie(payload: MovieCreate, db: DbSession, _: Annotated[User, Depends(require_roles("admin"))]):
-    item = Movie(**payload.model_dump())
+    movie_data = payload.model_dump()
+    movie_data["poster_url"] = str(payload.poster_url) if payload.poster_url else None
+    item = Movie(**movie_data)
     db.add(item)
     return save(db, item)
 
@@ -113,7 +120,9 @@ def create_event(payload: EventCreate, db: DbSession, user: Annotated[User, Depe
         raise HTTPException(status_code=422, detail="Venue must exist in the selected city")
     if not db.get(EventCategory, payload.category_id):
         raise HTTPException(status_code=404, detail="Event category not found")
-    item = Event(**payload.model_dump())
+    event_data = payload.model_dump()
+    event_data["poster_url"] = str(payload.poster_url) if payload.poster_url else None
+    item = Event(**event_data)
     db.add(item)
     return save(db, item)
 
