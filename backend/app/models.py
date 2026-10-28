@@ -135,7 +135,12 @@ class Booking(TimestampMixin, Base):
 
 class BookingItem(Base):
     __tablename__ = "booking_items"
-    __table_args__ = (CheckConstraint("quantity > 0", name="ck_booking_quantity"), CheckConstraint("unit_price >= 0", name="ck_booking_unit_price"), CheckConstraint("(seat_id IS NOT NULL AND ticket_type_id IS NULL AND quantity = 1) OR (seat_id IS NULL AND ticket_type_id IS NOT NULL)", name="ck_booking_allocation"))
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_booking_quantity"),
+        CheckConstraint("unit_price >= 0", name="ck_booking_unit_price"),
+        CheckConstraint("(seat_id IS NOT NULL AND ticket_type_id IS NULL AND quantity = 1) OR (seat_id IS NULL AND ticket_type_id IS NOT NULL)", name="ck_booking_allocation"),
+        UniqueConstraint("booking_id", "seat_id", name="uq_booking_seat_once"),
+    )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     booking_id: Mapped[int] = mapped_column(ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False, index=True)
     ticket_type_id: Mapped[int | None] = mapped_column(ForeignKey("ticket_types.id", ondelete="RESTRICT"))
