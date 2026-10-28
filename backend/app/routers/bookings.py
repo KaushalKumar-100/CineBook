@@ -23,6 +23,8 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
         raise HTTPException(status_code=422, detail="Choose either seat_ids or ticket_type_id")
     if has_seats and payload.quantity != 1:
         raise HTTPException(status_code=422, detail="Use quantity=1 when booking assigned seats")
+    if payload.seat_ids is not None and len(payload.seat_ids) == 0:
+        raise HTTPException(status_code=422, detail="seat_ids cannot be empty")
 
     try:
         # Serialize booking attempts for the same scheduled session on MySQL/InnoDB.
@@ -53,7 +55,7 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
                 raise HTTPException(status_code=422, detail="A seat does not belong to this session space")
             taken = db.scalars(select(BookingItem.seat_id).join(Booking, BookingItem.booking_id == Booking.id)
                 .where(Booking.session_id == session.id, Booking.status == "confirmed",
-                       BookingItem.seat_id.in_(seat_ids))).all()
+                       BookingItem.seat_id.in_(seat_ids)).with_for_update()).all()
             if taken:
                 raise HTTPException(status_code=409, detail="One or more seats are already booked")
             for seat in seats:
