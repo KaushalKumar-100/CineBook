@@ -17,9 +17,15 @@ Copy-Item .env.example .env
 
 Edit `backend/.env` locally. Set your MySQL user/password and replace `SECRET_KEY` with a long random secret. Keep `.env` private.
 
-Create the database in Workbench by running `backend/sql/schema.sql` (it creates the database and all 13 tables). Then optionally run `backend/sql/seed_demo.sql` to insert Guwahati/Tezpur/Delhi, event categories, a demo cinema, a sample movie, 40 seats, and a future show. Both files can be run from MySQL Workbench.
+Create the database by running `backend/sql/schema.sql` in MySQL Workbench (it creates `cinebook_db` and all 13 tables). The optional `backend/sql/seed_demo.sql` adds cities, categories, a demo cinema, one sample movie, 40 seats, and a future show. For the complete sample including a major concert and local workshop, use the interactive Python seeder below after configuring `.env`.
 
-Start in `backend/`:
+Run the local-only demo seeder from `backend/` (it creates missing tables and prompts for an organizer email/password; no default credentials are stored in the project):
+
+```powershell
+python -m scripts.seed_demo
+```
+
+Then start the API from `backend/`:
 
 ```powershell
 uvicorn app.main:app --reload
@@ -78,7 +84,7 @@ UPDATE users SET role = 'admin' WHERE email = 'your-email@example.com';
 Do not expose an unauthenticated admin creation endpoint.
 
 ## Tests
-From `backend/` run `pytest`. Integration checks against MySQL should also be carried out locally using health endpoints and Swagger docs.
+From `backend/` run `pytest`. GitHub Actions also runs backend tests and a frontend production build. Since your MySQL instance is local to your laptop, confirm integration using `/health/db`, `/health/schema`, and Swagger at `/docs` after running the API.
 
 ## Database concepts
 The project demonstrates normalization, PK/FK relationships, unique constraints, check constraints, role-based access, transaction boundaries, and booking-capacity checks.
