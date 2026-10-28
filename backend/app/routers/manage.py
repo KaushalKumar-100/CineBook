@@ -2,7 +2,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from app.dependencies import DbSession, require_roles
-from app.models import City, Event, EventCategory, Movie, SessionEvent, User, Venue, VenueSpace
+from app.models import City, Event, EventCategory, Movie, SessionEvent, TicketType, User, Venue, VenueSpace
 from app.schemas import CategoryCreate, CityCreate, EventCreate, MovieCreate, SessionCreate, TicketTypeCreate, VenueCreate, VenueSpaceCreate
 
 router = APIRouter(prefix="/manage", tags=["Organizer and Admin"])
@@ -54,9 +54,7 @@ def create_ticket_type(payload: TicketTypeCreate, db: DbSession, _: Annotated[Us
     if payload.capacity > session.venue_space.capacity:
         raise HTTPException(status_code=422, detail="Ticket capacity cannot exceed the venue space capacity")
     item_data = payload.model_dump()
-    item_data.pop("session_id")
-    from app.models import TicketType
-    item = TicketType(session_id=payload.session_id, **item_data)
+    item = TicketType(**payload.model_dump())
     db.add(item)
     return save(db, item)
 
