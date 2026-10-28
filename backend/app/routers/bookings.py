@@ -4,7 +4,7 @@ from secrets import token_urlsafe
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.dependencies import DbSession, get_current_user
@@ -75,6 +75,8 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
                 TicketType.is_active.is_(True)).with_for_update())
             if not ticket:
                 raise HTTPException(status_code=404, detail="Ticket type not found for this session")
+            # Lock the parent session row above; this serializes quantity checks for
+            # this session across concurrent MySQL/InnoDB booking transactions.
             sold = db.scalar(select(func.coalesce(func.sum(BookingItem.quantity), 0))
                 .join(Booking, BookingItem.booking_id == Booking.id)
                 .where(Booking.session_id == session.id, Booking.status == "confirmed",
