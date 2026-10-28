@@ -52,6 +52,7 @@ For local coursework, missing tables are auto-created only when `APP_ENV=develop
 - `GET /api/v1/events?city_id=1&event_type=local&q=music`
 - `GET /api/v1/event-categories`
 - `GET /api/v1/sessions?event_id=1` or `?movie_id=1`
+- `GET /api/v1/sessions/{id}/availability` — returns seats and/or remaining general-admission ticket capacity
 
 ### Organizer/admin
 - `POST /api/v1/manage/cities` (admin)
@@ -62,6 +63,8 @@ For local coursework, missing tables are auto-created only when `APP_ENV=develop
 - `POST /api/v1/manage/events` (admin/organizer)
 - `POST /api/v1/manage/events/{id}/publish` (owner organizer/admin)
 - `POST /api/v1/manage/sessions` (admin/organizer)
+- `POST /api/v1/manage/ticket-types` (admin/organizer; event general admission)
+- `POST /api/v1/manage/seats/bulk?venue_space_id=1&seats_per_row=10` with a JSON array of row labels as the body
 
 ### Booking (login required)
 - `POST /api/v1/bookings`: assigned seats: `{"session_id":1,"seat_ids":[1,2]}`; general admission: `{"session_id":2,"ticket_type_id":1,"quantity":2}`.
