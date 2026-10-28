@@ -67,8 +67,10 @@ def create_seats(venue_space_id: int, rows: list[str], seats_per_row: int, db: D
         raise HTTPException(status_code=422, detail="Provide 1-100 rows and 1-1000 seats per row")
     if len(set(rows)) != len(rows) or any(not row or len(row) > 10 for row in rows):
         raise HTTPException(status_code=422, detail="Row labels must be unique and 1-10 characters")
+    space = db.get(VenueSpace, venue_space_id)
     existing = db.query(Seat).filter(Seat.venue_space_id == venue_space_id).count()
-    if existing + len(rows) * seats_per_row > db.get(VenueSpace, venue_space_id).capacity:
+    requested_count = len(rows) * seats_per_row
+    if existing + requested_count > space.capacity:
         raise HTTPException(status_code=422, detail="Seat count cannot exceed venue space capacity")
     items = [Seat(venue_space_id=venue_space_id, row_label=row, seat_number=n) for row in rows for n in range(1, seats_per_row + 1)]
     db.add_all(items)
