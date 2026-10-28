@@ -67,7 +67,55 @@ def list_events(
         stmt = stmt.where(Event.event_type == event_type)
     if q:
         stmt = stmt.where(Event.title.ilike(f"%{q}%"))
-    return db.scalars(stmt).unique().all()
+    events = db.scalars(stmt).unique().all()
+    result = []
+    now = datetime.now()
+    for event in events:
+        upcoming = db.scalar(
+            select(SessionEvent)
+            .where(
+                SessionEvent.event_id == event.id,
+                SessionEvent.status == "scheduled",
+                SessionEvent.starts_at >= now,
+            )
+            .order_by(SessionEvent.starts_at)
+            .limit(1)
+        )
+        result.append({
+            "id": event.id,
+            "organizer_id": event.organizer_id,
+            "city_id": event.city_id,
+            "category_id": event.category_id,
+            "venue_id": event.venue_id,
+            "title": event.title,
+            "description": event.description,
+            "event_type": event.event_type,
+            "status": event.status,
+            "poster_url": event.poster_url,
+            "created_at": event.created_at,
+            "updated_at": event.updated_at,
+            "city": {
+                "id": event.city.id,
+                "name": event.city.name,
+                "state": event.city.state,
+                "country": event.city.country,
+            },
+            "venue": {
+                "id": event.venue.id,
+                "name": event.venue.name,
+                "venue_type": event.venue.venue_type,
+                "address": event.venue.address,
+            },
+            "category": {
+                "id": event.category.id,
+                "name": event.category.name,
+                "description": event.category.description,
+            },
+            "session_id": upcoming.id if upcoming else None,
+            "starts_at": upcoming.starts_at if upcoming else None,
+            "ends_at": upcoming.ends_at if upcoming else None,
+        })
+    return result
 
 
 @router.get("/event-categories")
