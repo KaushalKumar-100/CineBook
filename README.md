@@ -41,3 +41,17 @@ See [backend/README.md](backend/README.md) and [frontend/README.md](frontend/REA
 - Payment and refund entries are simulated; no real payment gateway or card data is used.
 - `DEMO_MODE=true` enables local development table creation; keep the `.env` file private and do not use demo configuration in production.
 - Run `pytest` from `backend/`; GitHub Actions checks backend tests and builds the frontend.
+
+
+## Production-readiness notes
+
+The project is a strong local/demo foundation, but a public ticketing service needs the following before accepting real customers or money:
+
+- Set `APP_ENV=production`, `DEMO_MODE=false`, a unique random `SECRET_KEY` (at least 32 characters), real database credentials, and `CORS_ALLOWED_ORIGINS` to the exact deployed frontend origin.
+- The production API hides Swagger/OpenAPI endpoints; keep API docs enabled only in trusted development environments.
+- Use managed MySQL with backups, TLS, least-privilege database credentials, monitoring, and a versioned migration tool such as Alembic before schema changes.
+- Add a real payment provider with signed webhook verification and idempotency before taking payments. Current payment/refund records are explicitly simulated.
+- Configure HTTPS, rate limiting, request logging/monitoring, and a reviewed privacy/retention policy at the deployment/edge layer.
+- Build and test both services in CI; verify concurrency and booking rollback behavior against the same MySQL engine/version used in production.
+
+The frontend now includes locally generated SVG poster artwork for movies, concerts, comedy, campus events, workshops, and general experiences. These local posters are reliable fallback artwork; listing-specific external poster URLs remain optional.
