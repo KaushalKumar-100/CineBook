@@ -23,10 +23,10 @@ const demoEvents = [
 ];
 
 const categories = [
-  { name: "Concerts", icon: Music2, filter: "Concert" },
-  { name: "Comedy", icon: Laugh, filter: "Comedy" },
-  { name: "College fests", icon: GraduationCap, filter: "College Fest" },
-  { name: "Workshops", icon: Sparkles, filter: "Workshop" },
+  { name: "Concerts", icon: Music2, filter: "Concert", poster: "/posters/concert.svg" },
+  { name: "Comedy", icon: Laugh, filter: "Comedy", poster: "/posters/comedy.svg" },
+  { name: "College fests", icon: GraduationCap, filter: "College Fest", poster: "/posters/college-fest.svg" },
+  { name: "Workshops", icon: Sparkles, filter: "Workshop", poster: "/posters/workshop.svg" },
 ];
 
 function prettyDate(value) {
@@ -449,7 +449,7 @@ export default function App() {
         <section className="category-strip" aria-label="Explore event categories">
           <div className="section-intro"><span className="mini-label">FIND YOUR THING</span><h2>What are you<br />in the mood for?</h2></div>
           <div className="category-list">
-            {categories.map(({ name, icon: Icon, filter }) => <button className="category-pill" key={name} onClick={() => chooseCategory(filter)}><span><Icon size={20} /></span><b>{name}</b><ChevronRight size={16} /></button>)}
+            {categories.map(({ name, icon: Icon, filter, poster }) => <button className="category-pill" key={name} onClick={() => chooseCategory(filter)} style={{ "--category-poster": `url("${poster}")` }}><span><Icon size={20} /></span><b>{name}</b><ChevronRight size={16} /></button>)}
           </div>
         </section>
 
