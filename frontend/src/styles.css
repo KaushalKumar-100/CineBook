@@ -197,3 +197,34 @@ button:disabled{cursor:not-allowed;opacity:.55}
 .empty-bookings p{font-size:12px;line-height:1.6;max-width:300px;margin:0}
 .account-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:21px}
 @media(max-width:760px){.account-modal{padding:29px 20px 21px}.account-modal h2{font-size:28px}}
+
+
+/* Generated local category artwork: works without third-party image hosts. */
+.category-pill {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(20, 15, 25, .96) 0%, rgba(20, 15, 25, .78) 58%, rgba(20, 15, 25, .32) 100%),
+    var(--category-poster) center 42% / cover,
+    #1a191f;
+}
+.category-pill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(0deg, rgba(10, 9, 14, .34), transparent 65%);
+  pointer-events: none;
+}
+.category-pill > * { position: relative; }
+.event-poster, .movie-poster { background: #211d2b; }
+img { color: transparent; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
