@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     db_password: str = ""
     db_echo: bool = False
     demo_mode: bool = True
+    cors_allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173"
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -32,6 +33,10 @@ class Settings(BaseSettings):
                 raise ValueError("DEMO_MODE must be false outside local development.")
             if len(self.secret_key) < 32 or self.secret_key.startswith("development-only"):
                 raise ValueError("Set a unique SECRET_KEY with at least 32 characters in production.")
+            if not self.cors_allowed_origins.strip():
+                raise ValueError("Set CORS_ALLOWED_ORIGINS to the deployed frontend origin.")
+            if "*" in [origin.strip() for origin in self.cors_allowed_origins.split(",")]:
+                raise ValueError("Wildcard CORS origins are not allowed in production.")
         return self
 
 
