@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import React from "react";
 import {
+
   Search, MapPin, Ticket, CalendarDays, Film, Music2, Laugh,
   GraduationCap, ChevronRight, Heart, Menu, X, Clock3, ArrowUpRight,
   Sparkles, SlidersHorizontal, RefreshCw, CircleUserRound
