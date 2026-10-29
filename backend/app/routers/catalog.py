@@ -68,19 +68,29 @@ def list_events(
     if q:
         stmt = stmt.where(Event.title.ilike(f"%{q}%"))
     events = db.scalars(stmt).unique().all()
-    result = []
+    if not events:
+        return []
+
+    # Fetch upcoming sessions in one additional query instead of running one
+    # query per event. This avoids the classic N+1 query pattern as catalog size grows.
     now = datetime.now()
-    for event in events:
-        upcoming = db.scalar(
-            select(SessionEvent)
-            .where(
-                SessionEvent.event_id == event.id,
-                SessionEvent.status == "scheduled",
-                SessionEvent.starts_at >= now,
-            )
-            .order_by(SessionEvent.starts_at)
-            .limit(1)
+    event_ids = [event.id for event in events]
+    upcoming_sessions = db.scalars(
+        select(SessionEvent)
+        .where(
+            SessionEvent.event_id.in_(event_ids),
+            SessionEvent.status == "scheduled",
+            SessionEvent.starts_at >= now,
         )
+        .order_by(SessionEvent.starts_at)
+    ).all()
+    upcoming_by_event = {}
+    for session in upcoming_sessions:
+        upcoming_by_event.setdefault(session.event_id, session)
+
+    result = []
+    for event in events:
+        upcoming = upcoming_by_event.get(event.id)
         result.append({
             "id": event.id,
             "organizer_id": event.organizer_id,
@@ -152,17 +162,23 @@ def session_availability(session_id: int, db: DbSession):
         .where(TicketType.session_id == session_id, TicketType.is_active.is_(True))
         .order_by(TicketType.price, TicketType.name)
     ).all()
-    ticket_availability = []
-    for ticket in ticket_types:
-        sold = db.scalar(
-            select(func.coalesce(func.sum(BookingItem.quantity), 0))
+    # Aggregate sold quantities for every ticket type in one database roundtrip.
+    sold_by_ticket = {}
+    if ticket_types:
+        sold_rows = db.execute(
+            select(BookingItem.ticket_type_id, func.coalesce(func.sum(BookingItem.quantity), 0))
             .join(Booking, BookingItem.booking_id == Booking.id)
             .where(
                 Booking.session_id == session_id,
                 Booking.status == "confirmed",
-                BookingItem.ticket_type_id == ticket.id,
+                BookingItem.ticket_type_id.in_([ticket.id for ticket in ticket_types]),
             )
-        ) or 0
+            .group_by(BookingItem.ticket_type_id)
+        ).all()
+        sold_by_ticket = {ticket_id: int(quantity or 0) for ticket_id, quantity in sold_rows}
+    ticket_availability = []
+    for ticket in ticket_types:
+        sold = sold_by_ticket.get(ticket.id, 0)
         ticket_availability.append({
             "id": ticket.id,
             "name": ticket.name,
