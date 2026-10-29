@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
 
   Search, MapPin, Ticket, CalendarDays, Film, Music2, Laugh,
@@ -43,17 +42,48 @@ function prettyTime(value) {
   return new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit" }).format(date);
 }
 
-function ImageOrFallback({ src, alt, className = "" }) {
+function getCategoryPoster(item) {
+  const category = String(item?.category?.name || item?.event_type || "").toLowerCase();
+  if (category.includes("concert") || category.includes("music") || category.includes("major")) return "/posters/concert.svg";
+  if (category.includes("comedy")) return "/posters/comedy.svg";
+  if (category.includes("college") || category.includes("fest") || category.includes("campus")) return "/posters/college-fest.svg";
+  if (category.includes("workshop") || category.includes("education") || category.includes("tech")) return "/posters/workshop.svg";
+  if (item?.duration_minutes || item?.language || item?.synopsis) return "/posters/cinema.svg";
+  return "/posters/experience.svg";
+}
+
+function ImageOrFallback({ src, alt, className = "", fallbackSrc = "/posters/experience.svg" }) {
   const [failed, setFailed] = useState(false);
-  if (!src || failed) return <div className={`image-fallback ${className}`} aria-label={alt}><Film size={30} /><span>CineBook</span></div>;
-  return <img className={className} src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />;
+  const [fallbackFailed, setFallbackFailed] = useState(false);
+  useEffect(() => {
+    setFailed(false);
+    setFallbackFailed(false);
+  }, [src, fallbackSrc]);
+
+  if ((!src || failed) && fallbackFailed) {
+    return <div className={`image-fallback ${className}`} role="img" aria-label={alt}><Film size={30} /><span>CineBook</span></div>;
+  }
+  const imageSrc = !src || failed ? fallbackSrc : src;
+  return (
+    <img
+      className={className}
+      src={imageSrc}
+      alt={alt || "CineBook poster"}
+      loading="lazy"
+      decoding="async"
+      onError={() => {
+        if (src && !failed) setFailed(true);
+        else setFallbackFailed(true);
+      }}
+    />
+  );
 }
 
 function EventCard({ item, saved, onSave, onBook }) {
   return (
     <article className="event-card">
       <div className="event-poster-wrap">
-        <ImageOrFallback src={item.poster_url} alt={item.title} className="event-poster" />
+        <ImageOrFallback src={item.poster_url} fallbackSrc={getCategoryPoster(item)} alt={item.title} className="event-poster" />
         <span className={`event-type ${item.event_type === "major" ? "major" : ""}`}>{item.event_type === "major" ? "FEATURED" : "LOCAL PICK"}</span>
         <button className={`icon-button save-button ${saved ? "is-saved" : ""}`} onClick={() => onSave(item.id)} aria-label={saved ? "Unsave event" : "Save event"}><Heart size={17} fill={saved ? "currentColor" : "none"} /></button>
       </div>
@@ -75,7 +105,7 @@ function MovieCard({ item, onBook }) {
   return (
     <article className="movie-card">
       <button className="poster-click" onClick={() => onBook(item)} aria-label={`Explore ${item.title}`}>
-        <ImageOrFallback src={item.poster_url} alt={item.title} className="movie-poster" />
+        <ImageOrFallback src={item.poster_url} fallbackSrc="/posters/cinema.svg" alt={item.title} className="movie-poster" />
         <span className="poster-overlay"><span>View showtimes <ArrowUpRight size={16} /></span></span>
       </button>
       <div className="movie-info"><h3>{item.title}</h3><p>{item.language || "Language TBA"} <span>·</span> {item.duration_minutes ? `${item.duration_minutes} min` : "Duration TBA"}</p></div>
