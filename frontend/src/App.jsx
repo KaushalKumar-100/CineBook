@@ -14,6 +14,7 @@ const demoMovies = [
   { id: "dm3", title: "Rajini: The Jailer 2", language: "Hindi", duration_minutes: 165, certificate: "UA16+", synopsis: "A retired jailer is pulled back into a dangerous underworld conflict when a new threat puts his family and the legacy he built at risk.", poster_url: "https://m.media-amazon.com/images/M/MV5BYmE0MTFjOTYtMWYxNC00YjFjLTlhNzYtMWQ5ZDEwNjRmYzE1XkEyXkFqcGc%40._V1_.jpg", release_date: "2026-10-15", demo: true },
   { id: "dm4", title: "Nayyi Navelli", language: "Hindi", duration_minutes: 138, certificate: "UA16+", synopsis: "A picture-perfect bride brings unexpected joy to a chaotic Meerut household, until her brother-in-law begins to suspect that their blessing may be a witch in disguise.", poster_url: "https://m.media-amazon.com/images/M/MV5BZmJjYzUyMmYtNDgyNy00MzlkLWE1ZDAtZDFjNzgxYzQxOGY5XkEyXkFqcGc%40._V1_.jpg", release_date: "2026-10-16", demo: true },
   { id: "dm5", title: "Namit Malhotra's Ramayana", language: "Hindi, Tamil, Telugu, Kannada", duration_minutes: 195, certificate: "U", synopsis: "The timeless story of Rama and Ravana returns as a large-scale cinematic retelling, following the epic conflict that has shaped generations.", poster_url: "https://cf-img-a-in.tosshub.com/sites/visualstory/wp/2025/07/ramayanaITG-1751608352043.jpeg?size=%2A%3A900", release_date: "2026-11-05", demo: true }
+  { id: "dm6", title: "Blue (2026)", language: "Italian", duration_minutes: 87, certificate: "A", synopsis: "An Italian-language romantic thriller. The supplied listing presents it as a streaming title with rent and buy options; CineBook includes it as a catalogue preview, not a cinema booking.", poster_url: "/posters/cinema.svg", release_date: "2026-10-16", streaming_only: true, demo: true },
 ];
 
 const demoEvents = [
@@ -21,6 +22,53 @@ const demoEvents = [
   { id: "de2", title: "The Messi Experience: A Dream Come True", event_type: "major", city: { name: "Mumbai" }, venue: { name: "Century Mills, Lower Parel" }, category: { name: "Experiences" }, starts_at: "2026-11-07T10:00:00", poster_url: "/posters/experience.svg", description: "An immersive football experience celebrating Lionel Messi's career through interactive exhibits and fan-focused installations.", starting_price: 999, demo: true },
   { id: "de3", title: "Papa Yaar by Zakir Khan", event_type: "major", city: { name: "Mumbai" }, venue: { name: "DOME, SVP Stadium" }, category: { name: "Comedy Shows" }, starts_at: "2026-11-14T20:00:00", poster_url: "/posters/comedy.svg", description: "A live stand-up evening built around observational humour, family stories and everyday relationships.", starting_price: 1299, demo: true },
   { id: "de4", title: "CALVIN HARRIS - Live in Mumbai", event_type: "major", city: { name: "Mumbai" }, venue: { name: "Infinity Bay, Sewri" }, category: { name: "Music Shows" }, starts_at: "2026-12-12T18:30:00", poster_url: "/posters/concert.svg", description: "A large-scale electronic music night featuring DJ and producer Calvin Harris in Mumbai.", starting_price: 3500, demo: true }
+];
+
+
+
+const concertPosterPreviews = [
+  {
+    id: "concert-preview-philharmonic",
+    title: "New Chamber St. Petersburg Philharmonic Orchestra",
+    event_type: "major",
+    city: { name: "Mumbai" },
+    venue: { name: "NCPA / Prithvi Theatre (poster reference)" },
+    category: { name: "Concerts" },
+    poster_url: "/posters/concert-philharmonic.jpg",
+    description: "Western classical concert with conductor Yaroslav Zaboyarkin. The poster lists works by Britten, Borodin, Shostakovich, Verdi-Lovreglio, Taneyev and Tchaikovsky. It shows the event as closed; no current show date or ticket availability is being advertised.",
+    duration_minutes: 90,
+    age_limit: "6+",
+    demo: true,
+    poster_preview: true,
+  },
+  {
+    id: "concert-preview-winter-choir",
+    title: "Winter Concert — Delhi Chamber Choir",
+    event_type: "local",
+    city: { name: "Delhi" },
+    venue: { name: "Venue not specified on poster" },
+    category: { name: "Concerts" },
+    poster_url: "/posters/concert-winter-choir.jpg",
+    description: "Delhi Chamber Choir presents a Western classical winter programme conducted by Nadezda Balyan, with English, Latin and Hindi repertoire. The poster refers to Winter Concert 2025 and marks the event closed; no current booking is available.",
+    duration_minutes: 60,
+    age_limit: "10+",
+    demo: true,
+    poster_preview: true,
+  },
+  {
+    id: "concert-preview-saturday",
+    title: "Saturday Concerts",
+    event_type: "major",
+    city: { name: "City to be confirmed" },
+    venue: { name: "Hamilton Cocktail Bar" },
+    category: { name: "Concerts" },
+    poster_url: "/posters/concert-saturday.jpg",
+    description: "Rock music event poster for Hamilton Cocktail Bar. The poster lists English-language music and a 21+ age limit, and shows the event closed. City, date and current ticket availability are not specified.",
+    duration_minutes: 210,
+    age_limit: "21+",
+    demo: true,
+    poster_preview: true,
+  },
 ];
 
 const categories = [
@@ -87,17 +135,17 @@ function EventCard({ item, saved, onSave, onBook }) {
     <article className="event-card">
       <div className="event-poster-wrap">
         <ImageOrFallback src={item.poster_url} fallbackSrc={getCategoryPoster(item)} alt={item.title} className="event-poster" />
-        <span className={`event-type ${item.event_type === "major" ? "major" : ""}`}>{item.event_type === "major" ? "FEATURED" : "LOCAL PICK"}</span>
+        <span className={`event-type ${item.event_type === "major" ? "major" : ""} ${item.poster_preview ? "poster-preview" : ""}`}>{item.poster_preview ? "POSTER PREVIEW" : item.event_type === "major" ? "FEATURED" : "LOCAL PICK"}</span>
         <button className={`icon-button save-button ${saved ? "is-saved" : ""}`} onClick={() => onSave(item.id)} aria-label={saved ? "Unsave event" : "Save event"}><Heart size={17} fill={saved ? "currentColor" : "none"} /></button>
       </div>
       <div className="event-card-body">
         <p className="eyebrow">{item.category?.name || "Experience"} <span>·</span> {item.city?.name || "Your city"}</p>
         <h3>{item.title}</h3>
         <p className="event-description">{item.description || "Discover something worth stepping out for."}</p>
-        <div className="event-meta"><span><CalendarDays size={15} />{prettyDate(item.starts_at || item.start_time)}</span><span><Clock3 size={15} />{prettyTime(item.starts_at || item.start_time)}</span>{item.starting_price != null && <span>From ₹{Number(item.starting_price).toFixed(0)}</span>}</div>
+        <div className="event-meta">{item.poster_preview ? <span>Archived poster · Event closed</span> : <><span><CalendarDays size={15} />{prettyDate(item.starts_at || item.start_time)}</span><span><Clock3 size={15} />{prettyTime(item.starts_at || item.start_time)}</span>{item.starting_price != null && <span>From ₹{Number(item.starting_price).toFixed(0)}</span>}</>}</div>
         <div className="event-card-footer">
           <span className="venue-label"><MapPin size={14} />{item.venue?.name || "Venue details soon"}</span>
-          <button className="text-button" onClick={() => onBook(item)}>Explore <ChevronRight size={16} /></button>
+          <button className="text-button" onClick={() => onBook(item)}>{item.poster_preview ? "View poster" : "Explore"} <ChevronRight size={16} /></button>
         </div>
       </div>
     </article>
@@ -109,7 +157,7 @@ function MovieCard({ item, onBook }) {
     <article className="movie-card">
       <button className="poster-click" onClick={() => onBook(item)} aria-label={`Explore ${item.title}`}>
         <ImageOrFallback src={item.poster_url} fallbackSrc="/posters/cinema.svg" alt={item.title} className="movie-poster" />
-        <span className="poster-overlay"><span>View showtimes <ArrowUpRight size={16} /></span></span>
+        <span className="poster-overlay"><span>{item.streaming_only ? "Streaming details" : item.demo ? "View movie details" : "View showtimes"} <ArrowUpRight size={16} /></span></span>
       </button>
       <div className="movie-info"><h3>{item.title}</h3><p>{item.language || "Language TBA"} <span>·</span> {item.duration_minutes ? `${item.duration_minutes} min` : "Duration TBA"}{item.certificate ? ` · ${item.certificate}` : ""}{item.release_date ? ` · ${prettyDate(item.release_date)}` : ""}</p></div>
     </article>
@@ -306,8 +354,15 @@ export default function App() {
       if (cancelled) return;
       setApiOnline(Boolean(healthData?.status === "connected"));
       setCities(Array.isArray(cityData) ? cityData : []);
-      setEvents(Array.isArray(eventData) && eventData.length ? eventData : demoEvents);
-      setMovies(Array.isArray(movieData) && movieData.length ? movieData : demoMovies);
+      const availableEvents = Array.isArray(eventData) && eventData.length ? eventData : demoEvents;
+      const eventTitles = new Set(availableEvents.map((item) => String(item.title || "").trim().toLowerCase()));
+      const posterOnlyEvents = concertPosterPreviews.filter((item) => !eventTitles.has(item.title.trim().toLowerCase()));
+      setEvents([...availableEvents, ...posterOnlyEvents]);
+
+      const availableMovies = Array.isArray(movieData) ? movieData : [];
+      const movieTitles = new Set(availableMovies.map((item) => String(item.title || "").trim().toLowerCase()));
+      const missingPosterMovies = demoMovies.filter((item) => !movieTitles.has(item.title.trim().toLowerCase()));
+      setMovies([...availableMovies, ...missingPosterMovies]);
       setLoading(false);
     }
     loadData();
