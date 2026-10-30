@@ -183,6 +183,7 @@ def ensure_session_at(
             starts_at=starts_at,
             ends_at=starts_at + timedelta(minutes=duration_minutes),
             base_price=base_price,
+            booking_mode="assigned" if movie is not None else "general_admission",
             tax_percent=Decimal("18.00"),
             convenience_fee=Decimal("25.00"),
             status="scheduled",
