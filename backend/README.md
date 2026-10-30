@@ -75,10 +75,11 @@ For local coursework, missing tables are auto-created only when `APP_ENV=develop
 - `POST /api/v1/bookings`: assigned seats: `{"session_id":1,"seat_ids":[1,2],"payment_method":"demo_upi"}`; general admission: `{"session_id":2,"ticket_type_id":1,"quantity":2,"payment_method":"demo_card"}`. Assigned-seat bookings require unexpired holds owned by the requesting user. Payment method values are `demo_upi`, `demo_card`, or `demo_netbanking`.
 - `GET /api/v1/bookings/me`
 - `GET /api/v1/bookings/{id}`
+- `GET /api/v1/bookings/{id}/ticket/qr`: owner/admin-only QR image response for confirmed bookings; the QR stores only the unguessable ticket code.
 - `GET /api/v1/bookings/{id}/payments`
 - `POST /api/v1/bookings/{id}/cancel`
 
-Payments/refunds are simulated for coursework. The frontend has a show/seat selection step, checkout summary with taxes and fee, demo payment method choice, terms acknowledgement, confirmation and printable ticket code. No card/UPI credentials are collected and no real payment provider is connected. A generated ticket code is not valid for admission to the real venue.
+Payments/refunds are simulated for coursework. The checkout now opens the CineBook DemoPay test page with UPI/card/netbanking method selection, simulated success and decline actions, and no credential fields. On success the backend confirms the demo booking and issues a random ticket code; the QR endpoint renders that code as a PNG data URL for display/download. QR contents do not include customer or payment information. No real payment provider is connected and demo tickets are not valid for admission to real venues.
 
 ## Create first administrator
 Register your own account via `POST /api/v1/auth/register`. Then, using your local MySQL Workbench and after confirming the email, promote only your own account:
