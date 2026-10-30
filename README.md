@@ -17,7 +17,7 @@ CineBook is a DBMS-focused ticket-booking platform inspired by BookMyShow. It su
 - Numbered cinema seats and capacity-limited general-admission tickets.
 - Booking history, cancellation, and simulated payment/refund records.
 - Full MySQL DDL, repeatable SQL seed data, and an interactive major/local event demo seeder.
-- BookMyShow-inspired discovery, venue/showtime selection, price-tiered seat maps, checkout review, demo payment selection, booking confirmation, booking history, and printable e-ticket.
+- BookMyShow-inspired discovery, venue/showtime selection, price-tiered seat maps, temporary seat holds, a simulated payment gateway with success/decline test paths, booking confirmation, booking history, and printable QR e-tickets.
 
 ## Quick start (Windows)
 1. Run `backend/sql/schema.sql` in MySQL Workbench.
@@ -38,7 +38,7 @@ See [backend/README.md](backend/README.md) and [frontend/README.md](frontend/REA
 
 ## Important
 - Movie and play titles/descriptions are based on the supplied sample posters and public listing descriptions. All seeded show dates, seat inventory, ticket rates, tax and convenience charges are demonstration values and must not be treated as live venue availability.
-- Checkout offers simulated UPI/card/netbanking choices; no payment provider is called, no money is collected, and no card, UPI PIN, CVV or OTP data is requested. Confirmation generates a demo ticket code that is not valid for real-venue entry.
+- Checkout opens a clearly labelled simulated UPI/card/netbanking gateway with success and decline test actions. No payment provider is called, no money is collected, and no card, UPI PIN, CVV or OTP data is requested. Successful demo checkout generates a random ticket reference and downloadable QR code; the QR stores only that reference and is not valid for real-venue entry.
 - `DEMO_MODE=true` enables local development table creation; keep the `.env` file private and do not use demo configuration in production.
 - Run `pytest` from `backend/`; GitHub Actions checks backend tests and builds the frontend.
 
