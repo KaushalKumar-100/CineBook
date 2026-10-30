@@ -389,3 +389,16 @@ img { color: transparent; }
 
 .event-type.poster-preview{color:#f0c98f;background:#2b2115e8;border-color:#d7aa6855}
 .streaming-only-note{display:block;margin-top:7px;color:#d8b68a;font-size:9px;letter-spacing:.2px}
+
+
+/* Merchant UPI QR block on the demo payment screen. */
+.merchant-qr-panel{display:grid;justify-items:center;gap:11px;margin:15px 0;padding:16px;border:1px solid #ffffff22;border-radius:12px;background:#f8f7f4;color:#17141a;text-align:center}
+.merchant-qr-heading{display:grid;gap:4px}
+.merchant-qr-heading b{font-size:12px;color:#17141a}
+.merchant-qr-heading small{font-size:10px;color:#5c5660}
+.merchant-payment-qr{display:block;width:min(230px,100%);height:auto;aspect-ratio:1;object-fit:contain;padding:9px;border-radius:8px;background:#fff;border:1px solid #e2dfe3}
+.merchant-qr-missing{display:grid;justify-items:center;gap:7px;width:100%;padding:20px 12px;border:1px dashed #c8c0c9;border-radius:9px;color:#655c68}
+.merchant-qr-missing b{font-size:11px;color:#28222d}
+.merchant-qr-missing p{max-width:270px;margin:0;font-size:9px;line-height:1.55;color:#665e68}
+.merchant-qr-missing code{padding:2px 4px;border-radius:4px;background:#e9e5eb;color:#3c3242;overflow-wrap:anywhere}
+.merchant-qr-disclaimer{max-width:340px;margin:0;color:#655d67;font-size:9px;line-height:1.55}
