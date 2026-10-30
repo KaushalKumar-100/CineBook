@@ -30,7 +30,7 @@ CineBook is a DBMS-focused ticket-booking platform inspired by BookMyShow. It su
    Copy-Item .env.example .env
    ```
 3. Edit `backend/.env` locally. Set the MySQL credentials and a long random `SECRET_KEY`. Never commit or share `.env`.
-4. For an existing database, back it up and run `backend/sql/migrations/002_venue_booking_flow.sql` in MySQL Workbench before seeding. From `backend/`, run `python -m scripts.seed_demo` and follow the prompts. The script creates an organizer account, five movie listings, cinema seats in three price categories, Bhumika at Vasantrao Deshpande Hall in Nagpur, and sample Mumbai experiences.
+4. For an existing database, back it up and run `backend/sql/migrations/002_venue_booking_flow.sql` in MySQL Workbench before seeding. From `backend/`, run `python -m scripts.seed_demo` and follow the prompts. The script creates an organizer account, five movie listings, cinema seats in three price categories, Bhumika at Vasantrao Deshpande Hall in Nagpur, sample Mumbai experiences, and five additional city-directory records: Delhi, Bengaluru, Hyderabad, Kolkata, and Pune.
 5. Start the API from `backend/` with `uvicorn app.main:app --reload`; open http://127.0.0.1:8000/docs.
 6. Open a second terminal, run `cd frontend`, `npm install`, and `npm run dev`. Open the URL printed by Vite (normally http://localhost:5173).
 
