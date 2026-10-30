@@ -105,4 +105,4 @@ def test_ticket_qr_endpoint_is_registered_and_returns_png_data_url():
     data_url = build_ticket_qr_data_url("CINEBOOK-TEST-TICKET-8X4K")
     assert data_url.startswith("data:image/png;base64,")
     image_bytes = b64decode(data_url.split(",", 1)[1])
-    assert image_bytes.startswith(b"\\x89PNG\\r\\n\\x1a\\n")
+    assert image_bytes[:8] == bytes.fromhex("89504e470d0a1a0a")
