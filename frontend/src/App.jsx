@@ -92,7 +92,7 @@ function EventCard({ item, saved, onSave, onBook }) {
         <p className="eyebrow">{item.category?.name || "Experience"} <span>·</span> {item.city?.name || "Your city"}</p>
         <h3>{item.title}</h3>
         <p className="event-description">{item.description || "Discover something worth stepping out for."}</p>
-        <div className="event-meta"><span><CalendarDays size={15} />{prettyDate(item.starts_at || item.start_time)}</span><span><Clock3 size={15} />{prettyTime(item.starts_at || item.start_time)}</span></div>
+        <div className="event-meta"><span><CalendarDays size={15} />{prettyDate(item.starts_at || item.start_time)}</span><span><Clock3 size={15} />{prettyTime(item.starts_at || item.start_time)}</span>{item.starting_price != null && <span>From ₹{Number(item.starting_price).toFixed(0)}</span>}</div>
         <div className="event-card-footer">
           <span className="venue-label"><MapPin size={14} />{item.venue?.name || "Venue details soon"}</span>
           <button className="text-button" onClick={() => onBook(item)}>Explore <ChevronRight size={16} /></button>
@@ -278,7 +278,8 @@ export default function App() {
       .then((data) => {
         if (cancelled) return;
         setSessionAvailability(data);
-        if (data.ticket_types?.length) setSelectedTicketTypeId(String(data.ticket_types[0].id));
+        const firstAvailableTicket = data.ticket_types?.find((ticket) => ticket.remaining > 0);
+        if (firstAvailableTicket) setSelectedTicketTypeId(String(firstAvailableTicket.id));
       })
       .catch((error) => { if (!cancelled) setBookingError(error.message); })
       .finally(() => { if (!cancelled) setAvailabilityLoading(false); });
@@ -430,7 +431,11 @@ export default function App() {
       return;
     }
     if (!seatsMode && !selectedTicketTypeId) {
-      setBookingError("Choose a ticket category.");
+      setBookingError("Choose a ticket category with seats remaining.");
+      return;
+    }
+    if (!seatsMode && (selectedTicket?.remaining < bookingQuantity)) {
+      setBookingError("The selected ticket category does not have enough tickets remaining.");
       return;
     }
     setBookingError("");
@@ -489,7 +494,7 @@ export default function App() {
   const selectedTicket = (sessionAvailability?.ticket_types || []).find((ticket) => String(ticket.id) === selectedTicketTypeId);
   const bookingSubtotal = sessionAvailability?.booking_mode === "seats"
     ? selectedSeatRows.reduce((sum, seat) => sum + Number(seat.price ?? sessionAvailability.base_price ?? 0), 0)
-    : selectedTicket ? Number(selectedTicket.price) * Number(bookingQuantity) : 0;
+    : selectedTicket && selectedTicket.remaining >= bookingQuantity ? Number(selectedTicket.price) * Number(bookingQuantity) : 0;
   const bookingTaxPercent = Number(sessionAvailability?.tax_percent || 0);
   const bookingTax = Number((bookingSubtotal * bookingTaxPercent / 100).toFixed(2));
   const bookingConvenience = bookingSubtotal > 0 ? Number(sessionAvailability?.convenience_fee || 0) : 0;
@@ -655,7 +660,7 @@ export default function App() {
                 <div className="checkout-recap">
                   <div><span>Experience</span><b>{selected.title}</b></div>
                   <div><span>Show</span><b>{activeSession ? `${prettyDate(activeSession.starts_at)} · ${prettyTime(activeSession.starts_at)}` : `Session #${selectedSessionId}`}</b></div>
-                  <div><span>Venue</span><b>{selected.venue?.name || "Venue details"}</b></div>
+                  <div><span>Venue</span><b>{selected.venue?.name || activeSession?.venue?.name || "Venue details"}</b></div>
                   <div><span>Tickets</span><b>{sessionAvailability?.booking_mode === "seats" ? selectedSeatRows.map((seat) => `${seat.row_label}${seat.seat_number}`).join(", ") : `${bookingQuantity} × ${selectedTicket?.name || "Ticket"}`}</b></div>
                   <div><span>Booking under</span><b>{currentUser?.name || currentUser?.email}</b></div>
                   <div><span>Contact email</span><b>{currentUser?.email}</b></div>
