@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Annotated
 
@@ -16,6 +16,7 @@ from app.models import (
 from app.schemas import (
     EventModerationDecision, OrganizerApplicationCreate, OrganizerApplicationDecision,
     ProfileUpdate, RefundDecision, RefundRequestCreate, ReviewCreate, UserStatusUpdate,
+    TicketCheckIn,
 )
 
 router = APIRouter(prefix="/portal", tags=["Customer, Organizer and Admin Portal"])
@@ -470,11 +471,11 @@ def decide_refund(refund_id: int, payload: RefundDecision, db: DbSession, admin:
 
 @router.post("/tickets/check-in")
 def check_in_ticket(
-    ticket_code: str = Query(min_length=12, max_length=64),
-    db: DbSession = None,
-    staff: User = Depends(require_roles("admin", "organizer")),
+    payload: TicketCheckIn,
+    db: DbSession,
+    staff: Annotated[User, Depends(require_roles("admin", "organizer"))],
 ):
-    ticket = db.scalar(select(BookingTicket).where(BookingTicket.ticket_code == ticket_code).with_for_update())
+    ticket = db.scalar(select(BookingTicket).where(BookingTicket.ticket_code == payload.ticket_code).with_for_update())
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket code not found")
     booking = db.get(Booking, ticket.booking_id)
@@ -542,7 +543,7 @@ def sales_report(
             func.date(Booking.created_at),
             func.count(Booking.id),
             func.coalesce(func.sum(Booking.total_amount), 0),
-        ).where(Booking.status == "confirmed", Booking.created_at >= datetime.combine(since, datetime.min.time()).replace(day=since.day) - __import__("datetime").timedelta(days=days - 1))
+        ).where(Booking.status == "confirmed", Booking.created_at >= datetime.combine(since - timedelta(days=days - 1), datetime.min.time()))
         .group_by(func.date(Booking.created_at)).order_by(func.date(Booking.created_at))
     ).all()
     return {"days": days, "series": [{
