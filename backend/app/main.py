@@ -14,7 +14,8 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    if settings.app_env == "development" and settings.demo_mode:
+    # Convenience table creation is restricted to explicit local demo mode.
+    if settings.app_env.lower() == "development" and settings.demo_mode:
         Base.metadata.create_all(bind=engine)
     yield
 
@@ -27,8 +28,10 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+    allow_origins=settings.allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
