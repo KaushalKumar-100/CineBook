@@ -13,7 +13,7 @@ const demoMovies = [
   { id: "dm2", title: "Prahaar", language: "Hindi", duration_minutes: 141, certificate: "UA16+", synopsis: "Inspired by public prosecutor Ujjwal Nikam, the courtroom drama follows the legal battle after the 26/11 Mumbai attacks and the pursuit of justice against all odds.", poster_url: "https://www.tribuneindia.com/sortd-service/imaginary/v22-01/jpg/large/high?url=dGhldHJpYnVuZS1zb3J0ZC1wcm8tcHJvZC1zb3J0ZC9tZWRpYTcwOTc4MjgwLTcwNzgtMTFmMS1hZmFlLTJkNzNlMTMwYzExYi5qcGc%3D", release_date: "2026-10-16", demo: true },
   { id: "dm3", title: "Rajini: The Jailer 2", language: "Hindi", duration_minutes: 165, certificate: "UA16+", synopsis: "A retired jailer is pulled back into a dangerous underworld conflict when a new threat puts his family and the legacy he built at risk.", poster_url: "https://m.media-amazon.com/images/M/MV5BYmE0MTFjOTYtMWYxNC00YjFjLTlhNzYtMWQ5ZDEwNjRmYzE1XkEyXkFqcGc%40._V1_.jpg", release_date: "2026-10-15", demo: true },
   { id: "dm4", title: "Nayyi Navelli", language: "Hindi", duration_minutes: 138, certificate: "UA16+", synopsis: "A picture-perfect bride brings unexpected joy to a chaotic Meerut household, until her brother-in-law begins to suspect that their blessing may be a witch in disguise.", poster_url: "https://m.media-amazon.com/images/M/MV5BZmJjYzUyMmYtNDgyNy00MzlkLWE1ZDAtZDFjNzgxYzQxOGY5XkEyXkFqcGc%40._V1_.jpg", release_date: "2026-10-16", demo: true },
-  { id: "dm5", title: "Namit Malhotra's Ramayana", language: "Hindi, Tamil, Telugu, Kannada", duration_minutes: 195, certificate: "U", synopsis: "The timeless story of Rama and Ravana returns as a large-scale cinematic retelling, following the epic conflict that has shaped generations.", poster_url: "https://cf-img-a-in.tosshub.com/sites/visualstory/wp/2025/07/ramayanaITG-1751608352043.jpeg?size=%2A%3A900", release_date: "2026-11-05", demo: true }
+  { id: "dm5", title: "Namit Malhotra's Ramayana", language: "Hindi, Tamil, Telugu, Kannada", duration_minutes: 195, certificate: "U", synopsis: "The timeless story of Rama and Ravana returns as a large-scale cinematic retelling, following the epic conflict that has shaped generations.", poster_url: "https://cf-img-a-in.tosshub.com/sites/visualstory/wp/2025/07/ramayanaITG-1751608352043.jpeg?size=%2A%3A900", release_date: "2026-11-05", demo: true },
   { id: "dm6", title: "Blue (2026)", language: "Italian", duration_minutes: 87, certificate: "A", synopsis: "An Italian-language romantic thriller. The supplied listing presents it as a streaming title with rent and buy options; CineBook includes it as a catalogue preview, not a cinema booking.", poster_url: "/posters/cinema.svg", release_date: "2026-10-16", streaming_only: true, demo: true },
 ];
 
@@ -34,7 +34,7 @@ const concertPosterPreviews = [
     city: { name: "Mumbai" },
     venue: { name: "NCPA / Prithvi Theatre (poster reference)" },
     category: { name: "Concerts" },
-    poster_url: "/posters/concert-philharmonic.jpg",
+    poster_url: "/posters/concert-philharmonic.svg",
     description: "Western classical concert with conductor Yaroslav Zaboyarkin. The poster lists works by Britten, Borodin, Shostakovich, Verdi-Lovreglio, Taneyev and Tchaikovsky. It shows the event as closed; no current show date or ticket availability is being advertised.",
     duration_minutes: 90,
     age_limit: "6+",
@@ -48,7 +48,7 @@ const concertPosterPreviews = [
     city: { name: "Delhi" },
     venue: { name: "Venue not specified on poster" },
     category: { name: "Concerts" },
-    poster_url: "/posters/concert-winter-choir.jpg",
+    poster_url: "/posters/concert-winter-choir.svg",
     description: "Delhi Chamber Choir presents a Western classical winter programme conducted by Nadezda Balyan, with English, Latin and Hindi repertoire. The poster refers to Winter Concert 2025 and marks the event closed; no current booking is available.",
     duration_minutes: 60,
     age_limit: "10+",
@@ -62,7 +62,7 @@ const concertPosterPreviews = [
     city: { name: "City to be confirmed" },
     venue: { name: "Hamilton Cocktail Bar" },
     category: { name: "Concerts" },
-    poster_url: "/posters/concert-saturday.jpg",
+    poster_url: "/posters/concert-saturday.svg",
     description: "Rock music event poster for Hamilton Cocktail Bar. The poster lists English-language music and a 21+ age limit, and shows the event closed. City, date and current ticket availability are not specified.",
     duration_minutes: 210,
     age_limit: "21+",
@@ -159,7 +159,7 @@ function MovieCard({ item, onBook }) {
         <ImageOrFallback src={item.poster_url} fallbackSrc="/posters/cinema.svg" alt={item.title} className="movie-poster" />
         <span className="poster-overlay"><span>{item.streaming_only ? "Streaming details" : item.demo ? "View movie details" : "View showtimes"} <ArrowUpRight size={16} /></span></span>
       </button>
-      <div className="movie-info"><h3>{item.title}</h3><p>{item.language || "Language TBA"} <span>·</span> {item.duration_minutes ? `${item.duration_minutes} min` : "Duration TBA"}{item.certificate ? ` · ${item.certificate}` : ""}{item.release_date ? ` · ${prettyDate(item.release_date)}` : ""}</p></div>
+      <div className="movie-info"><h3>{item.title}</h3><p>{item.language || "Language TBA"} <span>·</span> {item.duration_minutes ? `${item.duration_minutes} min` : "Duration TBA"}{item.certificate ? ` · ${item.certificate}` : ""}{item.release_date ? ` · ${prettyDate(item.release_date)}` : ""}</p>{item.streaming_only && <small className="streaming-only-note">Streaming preview · no cinema showtimes</small>}</div>
     </article>
   );
 }
@@ -777,7 +777,7 @@ export default function App() {
             <p>{selected.description || selected.synopsis || "Explore the details and upcoming sessions for this listing."}</p>
             {selected.event_type && <div className="modal-fact"><MapPin size={16} />{selected.venue?.name || "Venue details"} · {selected.city?.name || "City details"}</div>}
 
-            {selected.demo ? <div className="preview-note"><Sparkles size={17} /><span>Sample catalogue preview. Run the backend demo seeder to create bookable sessions, live seat inventory and checkout pricing for this listing. Preview-only cards cannot take bookings.</span></div> : <>
+            {selected.demo ? <div className="preview-note"><Sparkles size={17} /><span>{selected.poster_preview ? "Archived poster preview. The supplied poster marks this event as closed, so this card is for catalogue display only and has no current showtime or ticket availability." : "Sample catalogue preview. This listing is not connected to a bookable cinema session yet."}</span></div> : <>
               <div className="booking-stepper" aria-label="Booking progress">
                 <span className={bookingStep === "select" ? "active" : bookingStep !== "select" ? "done" : ""}>1 <b>Show & seats</b></span>
                 <i />
