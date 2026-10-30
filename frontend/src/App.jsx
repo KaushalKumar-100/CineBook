@@ -197,6 +197,10 @@ export default function App() {
   const [paymentMethod, setPaymentMethod] = useState("demo_upi");
   const [bookingAccepted, setBookingAccepted] = useState(false);
   const [holdExpiresAt, setHoldExpiresAt] = useState(null);
+  const [ticketQrDataUrl, setTicketQrDataUrl] = useState("");
+  const [ticketQrLoading, setTicketQrLoading] = useState(false);
+  const [ticketQrError, setTicketQrError] = useState("");
+  const [demoPaymentReference, setDemoPaymentReference] = useState("");
   const [accountOpen, setAccountOpen] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
@@ -344,6 +348,10 @@ export default function App() {
     setBookingQuantity(1);
     setBookingStep("select");
     setBookingResult(null);
+    setTicketQrDataUrl("");
+    setTicketQrLoading(false);
+    setTicketQrError("");
+    setDemoPaymentReference("");
     setPaymentMethod("demo_upi");
     setBookingAccepted(false);
     if (item.demo) return;
@@ -446,6 +454,7 @@ export default function App() {
     setBookingError("");
     setBookingAccepted(false);
     setHoldExpiresAt(null);
+    setDemoPaymentReference(`CB-DEMO-${Date.now().toString(36).toUpperCase()}`);
 
     if (seatsMode) {
       setBookingBusy(true);
@@ -497,6 +506,31 @@ export default function App() {
       setBookingStep("select");
     } catch (error) {
       setBookingError(error.message || "Could not release the selected seats.");
+    }
+  }
+
+  async function simulateDemoPaymentFailure() {
+    setBookingBusy(true);
+    setBookingError("");
+    try {
+      if (holdExpiresAt && token && selectedSessionId) {
+        const response = await fetch(`${API_BASE}/api/v1/bookings/holds/${selectedSessionId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || "Could not release reserved seats.");
+        }
+        setHoldExpiresAt(null);
+      }
+      setBookingAccepted(false);
+      setBookingStep("select");
+      setBookingError("Demo payment declined. No booking was created and no money was charged. Your seat reservation was released; please select seats again to retry.");
+    } catch (error) {
+      setBookingError(error.message || "Could not complete the demo failure flow.");
+    } finally {
+      setBookingBusy(false);
     }
   }
 
@@ -556,9 +590,28 @@ export default function App() {
       if (!response.ok) throw new Error(data.detail || "Booking failed. Please check availability and retry.");
       setBookingResult(data);
       setHoldExpiresAt(null);
+      setTicketQrDataUrl("");
+      setTicketQrError("");
+      setTicketQrLoading(Boolean(data.ticket_code));
       setBookingStep("confirmed");
       setBookings((current) => [data, ...current.filter((booking) => booking.id !== data.id)]);
       setNotice(`Booking ${data.booking_reference} confirmed. Demo payment only; no money was charged.`);
+
+      if (data.ticket_code) {
+        try {
+          const qrResponse = await fetch(`${API_BASE}/api/v1/bookings/${data.id}/ticket/qr`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const qrData = await qrResponse.json().catch(() => ({}));
+          if (!qrResponse.ok) throw new Error(qrData.detail || "Could not generate the ticket QR code.");
+          setTicketQrDataUrl(qrData.qr_code_data_url || "");
+          if (!qrData.qr_code_data_url) throw new Error("The ticket QR response did not include an image.");
+        } catch (qrError) {
+          setTicketQrError(qrError.message || "Ticket was issued, but its QR image could not be loaded.");
+        } finally {
+          setTicketQrLoading(false);
+        }
+      }
     } catch (error) {
       setBookingError(error.message || "Booking failed.");
     } finally {
@@ -731,8 +784,13 @@ export default function App() {
               </>}
 
               {bookingStep === "checkout" && <div className="checkout-panel">
-                <h3>Complete your booking</h3>
-                <p className="booking-hint">Review the details before confirming this simulated payment.</p>
+                <div className="demo-gateway-heading">
+                  <div className="demo-gateway-logo"><Ticket size={20} /></div>
+                  <div><span className="mini-label">CINEBOOK SECURE CHECKOUT</span><h3>CineBook DemoPay</h3><p>Test payment gateway · no real money is involved</p></div>
+                  <span className="demo-mode-pill">DEMO MODE</span>
+                </div>
+                <div className="demo-order-strip"><span>Demo order reference</span><b>{demoPaymentReference || "Preparing demo order…"}</b></div>
+                <p className="booking-hint">Choose a simulated payment method, review the order and test either a successful or declined payment.</p>
                 <div className="checkout-recap">
                   <div><span>Experience</span><b>{selected.title}</b></div>
                   <div><span>Show</span><b>{activeSession ? `${prettyDate(activeSession.starts_at)} · ${prettyTime(activeSession.starts_at)}` : `Session #${selectedSessionId}`}</b></div>
@@ -746,9 +804,9 @@ export default function App() {
                 <h4>Choose a demo payment method</h4>
                 <div className="payment-methods">
                   {[
-                    ["demo_upi", "UPI", "Simulated UPI approval"],
-                    ["demo_card", "Card", "No card number required"],
-                    ["demo_netbanking", "Netbanking", "Simulated bank redirect"],
+                    ["demo_upi", "UPI", "Demo approval · no UPI PIN"],
+                    ["demo_card", "Credit / Debit Card", "Test card flow · no card data"],
+                    ["demo_netbanking", "Netbanking", "Demo bank redirect"],
                   ].map(([value, label, detail]) => <button type="button" key={value} className={paymentMethod === value ? "payment-method selected" : "payment-method"} onClick={() => setPaymentMethod(value)}><span className="payment-radio">{paymentMethod === value ? "●" : ""}</span><span><b>{label}</b><small>{detail}</small></span></button>)}
                 </div>
                 <div className="price-breakdown">
@@ -758,11 +816,18 @@ export default function App() {
                   <div className="price-total"><span>Total to pay</span><b>₹{bookingGrandTotal.toFixed(2)}</b></div>
                 </div>
                 {bookingError && <p className="form-error" role="alert">{bookingError}</p>}
-                <div className="demo-safe-note"><span>DEMO CHECKOUT</span><p>No real payment is processed. Do not enter bank, card, CVV, UPI PIN or OTP details.</p></div>
+                <div className="demo-gateway-panel">
+                  <div><span className="gateway-lock"><icon></icon> TEST GATEWAY</span><b>{paymentMethod === "demo_upi" ? "UPI payment simulation" : paymentMethod === "demo_card" ? "Card payment simulation" : "Netbanking simulation"}</b><small>Selected method: {paymentMethod.replace("demo_", "").replace("_", " ").toUpperCase()}</small></div>
+                  <div className="gateway-amount">₹{bookingGrandTotal.toFixed(2)}<small>Amount due · INR</small></div>
+                </div>
+                <div className="demo-safe-note"><span>SIMULATED PAYMENT PAGE</span><p>This gateway is for project testing only. It does not contact a bank or payment network. Never enter real card numbers, CVV, UPI PIN, OTP or banking credentials.</p></div>
                 <label className="booking-terms"><input type="checkbox" checked={bookingAccepted} onChange={(event) => setBookingAccepted(event.target.checked)} /><span>I have reviewed the show details and price breakdown, and understand that this is a simulated booking.</span></label>
+                <div className="demo-gateway-actions">
+                  <button className="primary-button demo-pay-button" disabled={bookingBusy || !bookingAccepted} onClick={submitBooking}>{bookingBusy ? "Processing simulated payment…" : `Simulate successful payment · ₹${bookingGrandTotal.toFixed(2)}`}</button>
+                  <button className="demo-fail-button" disabled={bookingBusy} onClick={simulateDemoPaymentFailure}>Simulate payment failure</button>
+                </div>
                 <div className="modal-actions">
-                  <button className="secondary-button" onClick={releaseCurrentSeatHold}>← Back to seats</button>
-                  <button className="primary-button" disabled={bookingBusy || !bookingAccepted} onClick={submitBooking}>{bookingBusy ? "Processing demo payment…" : `Pay ₹${bookingGrandTotal.toFixed(2)} (Demo)`}</button>
+                  <button className="secondary-button" disabled={bookingBusy} onClick={releaseCurrentSeatHold}>← Back to seats</button>
                 </div>
               </div>}
 
@@ -772,6 +837,15 @@ export default function App() {
                 <h3>Booking confirmed!</h3>
                 <p>Your demo ticket has been issued. Keep this code for check-in simulation.</p>
                 <div className="issued-ticket-code">{bookingResult.ticket_code || bookingResult.booking_reference}</div>
+                <div className="ticket-qr-panel">
+                  {ticketQrLoading ? <p className="booking-hint">Generating your secure ticket QR code…</p> :
+                    ticketQrDataUrl ? <>
+                      <img className="ticket-qr-image" src={ticketQrDataUrl} alt="CineBook ticket QR code" />
+                      <p>Scan this code to read the ticket reference.</p>
+                      <a className="secondary-button ticket-qr-download" href={ticketQrDataUrl} download={`cinebook-${bookingResult.booking_reference}-qr.png`}>Download ticket QR (PNG)</a>
+                    </> :
+                      <p className="form-error" role="alert">{ticketQrError || "Ticket QR code is unavailable. Keep your ticket reference."}</p>}
+                </div>
                 <div className="checkout-recap">
                   <div><span>Booking reference</span><b>{bookingResult.booking_reference}</b></div>
                   <div><span>Experience</span><b>{selected.title}</b></div>
