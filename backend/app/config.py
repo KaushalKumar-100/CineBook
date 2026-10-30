@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     smtp_from_email: str = ""
     smtp_use_tls: bool = True
     public_api_url: str = "http://127.0.0.1:8000"
+    frontend_reset_url: str = "http://localhost:5173/reset-password"
     rate_limit_per_minute: int = 120
 
     model_config = SettingsConfigDict(
