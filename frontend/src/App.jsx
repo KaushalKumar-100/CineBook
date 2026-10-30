@@ -28,6 +28,8 @@ const categories = [
   { name: "Comedy", icon: Laugh, filter: "Comedy", poster: "/posters/comedy.svg" },
   { name: "College fests", icon: GraduationCap, filter: "College Fest", poster: "/posters/college-fest.svg" },
   { name: "Workshops", icon: Sparkles, filter: "Workshop", poster: "/posters/workshop.svg" },
+  { name: "Theatre", icon: Film, filter: "Theatre", poster: "/posters/experience.svg" },
+  { name: "Experiences", icon: Sparkles, filter: "Experiences", poster: "/posters/experience.svg" },
 ];
 
 function prettyDate(value) {
@@ -109,7 +111,7 @@ function MovieCard({ item, onBook }) {
         <ImageOrFallback src={item.poster_url} fallbackSrc="/posters/cinema.svg" alt={item.title} className="movie-poster" />
         <span className="poster-overlay"><span>View showtimes <ArrowUpRight size={16} /></span></span>
       </button>
-      <div className="movie-info"><h3>{item.title}</h3><p>{item.language || "Language TBA"} <span>·</span> {item.duration_minutes ? `${item.duration_minutes} min` : "Duration TBA"}</p></div>
+      <div className="movie-info"><h3>{item.title}</h3><p>{item.language || "Language TBA"} <span>·</span> {item.duration_minutes ? `${item.duration_minutes} min` : "Duration TBA"}{item.certificate ? ` · ${item.certificate}` : ""}{item.release_date ? ` · ${prettyDate(item.release_date)}` : ""}</p></div>
     </article>
   );
 }
