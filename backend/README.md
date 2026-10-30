@@ -70,7 +70,9 @@ For local coursework, missing tables are auto-created only when `APP_ENV=develop
 - `POST /api/v1/manage/seats/bulk?venue_space_id=1&seats_per_row=10` with a JSON array of row labels as the body
 
 ### Booking (login required)
-- `POST /api/v1/bookings`: assigned seats: `{"session_id":1,"seat_ids":[1,2],"payment_method":"demo_upi"}`; general admission: `{"session_id":2,"ticket_type_id":1,"quantity":2,"payment_method":"demo_card"}`. Payment method values are `demo_upi`, `demo_card`, or `demo_netbanking`.
+- `POST /api/v1/bookings/holds`: request a temporary user-owned hold for 1-20 cinema seat IDs: `{"session_id":1,"seat_ids":[1,2]}`. Holds expire after `SEAT_HOLD_MINUTES` (default 8 minutes); requesting a new selection replaces that customer's previous hold for the same show.
+- `DELETE /api/v1/bookings/holds/{session_id}`: release the signed-in user's holds for that show.
+- `POST /api/v1/bookings`: assigned seats: `{"session_id":1,"seat_ids":[1,2],"payment_method":"demo_upi"}`; general admission: `{"session_id":2,"ticket_type_id":1,"quantity":2,"payment_method":"demo_card"}`. Assigned-seat bookings require unexpired holds owned by the requesting user. Payment method values are `demo_upi`, `demo_card`, or `demo_netbanking`.
 - `GET /api/v1/bookings/me`
 - `GET /api/v1/bookings/{id}`
 - `GET /api/v1/bookings/{id}/payments`
