@@ -17,7 +17,7 @@ CineBook is a DBMS-focused ticket-booking platform inspired by BookMyShow. It su
 - Numbered cinema seats and capacity-limited general-admission tickets.
 - Booking history, cancellation, and simulated payment/refund records.
 - Full MySQL DDL, repeatable SQL seed data, and an interactive major/local event demo seeder.
-- Responsive frontend with search/filtering, seat/ticket selection, and booking integration.
+- BookMyShow-inspired discovery, venue/showtime selection, price-tiered seat maps, checkout review, demo payment selection, booking confirmation, booking history, and printable e-ticket.
 
 ## Quick start (Windows)
 1. Run `backend/sql/schema.sql` in MySQL Workbench.
@@ -30,15 +30,15 @@ CineBook is a DBMS-focused ticket-booking platform inspired by BookMyShow. It su
    Copy-Item .env.example .env
    ```
 3. Edit `backend/.env` locally. Set the MySQL credentials and a long random `SECRET_KEY`. Never commit or share `.env`.
-4. From `backend/`, run `python -m scripts.seed_demo` and follow the prompts. The script creates an organizer account and sample movie/concert/workshop data.
+4. For an existing database, back it up and run `backend/sql/migrations/002_venue_booking_flow.sql` in MySQL Workbench before seeding. From `backend/`, run `python -m scripts.seed_demo` and follow the prompts. The script creates an organizer account, five movie listings, cinema seats in three price categories, Bhumika at Vasantrao Deshpande Hall in Nagpur, and sample Mumbai experiences.
 5. Start the API from `backend/` with `uvicorn app.main:app --reload`; open http://127.0.0.1:8000/docs.
 6. Open a second terminal, run `cd frontend`, `npm install`, and `npm run dev`. Open the URL printed by Vite (normally http://localhost:5173).
 
 See [backend/README.md](backend/README.md) and [frontend/README.md](frontend/README.md) for full instructions.
 
 ## Important
-- Event and movie examples are fictional coursework data.
-- Payment and refund entries are simulated; no real payment gateway or card data is used.
+- Movie and play titles/descriptions are based on the supplied sample posters and public listing descriptions. All seeded show dates, seat inventory, ticket rates, tax and convenience charges are demonstration values and must not be treated as live venue availability.
+- Checkout offers simulated UPI/card/netbanking choices; no payment provider is called, no money is collected, and no card, UPI PIN, CVV or OTP data is requested. Confirmation generates a demo ticket code that is not valid for real-venue entry.
 - `DEMO_MODE=true` enables local development table creation; keep the `.env` file private and do not use demo configuration in production.
 - Run `pytest` from `backend/`; GitHub Actions checks backend tests and builds the frontend.
 
