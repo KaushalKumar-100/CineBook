@@ -196,6 +196,7 @@ export default function App() {
   const [bookingResult, setBookingResult] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("demo_upi");
   const [bookingAccepted, setBookingAccepted] = useState(false);
+  const [holdExpiresAt, setHoldExpiresAt] = useState(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
@@ -417,7 +418,7 @@ export default function App() {
     }
   }
 
-  function continueToCheckout() {
+  async function continueToCheckout() {
     if (!token) {
       setAuthError("");
       setAuthMode("login");
@@ -444,7 +445,59 @@ export default function App() {
     }
     setBookingError("");
     setBookingAccepted(false);
+    setHoldExpiresAt(null);
+
+    if (seatsMode) {
+      setBookingBusy(true);
+      try {
+        const response = await fetch(`${API_BASE}/api/v1/bookings/holds`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            session_id: Number(selectedSessionId),
+            seat_ids: selectedSeats,
+          }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.detail || "Could not temporarily reserve these seats.");
+        setHoldExpiresAt(data.expires_at);
+      } catch (error) {
+        setBookingError(error.message || "Could not reserve seats. Refresh availability and try again.");
+        return;
+      } finally {
+        setBookingBusy(false);
+      }
+    }
+
     setBookingStep("checkout");
+  }
+
+  async function releaseCurrentSeatHold() {
+    if (!token || !selectedSessionId || sessionAvailability?.booking_mode !== "seats" || !holdExpiresAt) {
+      setBookingStep("select");
+      setHoldExpiresAt(null);
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/api/v1/bookings/holds/${selectedSessionId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || "Could not release the seat reservation.");
+      }
+      setSessionAvailability((current) => current ? ({
+        ...current,
+        seats: current.seats.map((seat) => selectedSeats.includes(seat.id)
+          ? { ...seat, available: true, status: "available" }
+          : seat),
+      }) : current);
+      setHoldExpiresAt(null);
+      setBookingStep("select");
+    } catch (error) {
+      setBookingError(error.message || "Could not release the selected seats.");
+    }
   }
 
   async function submitBooking() {
@@ -489,6 +542,7 @@ export default function App() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.detail || "Booking failed. Please check availability and retry.");
       setBookingResult(data);
+      setHoldExpiresAt(null);
       setBookingStep("confirmed");
       setBookings((current) => [data, ...current.filter((booking) => booking.id !== data.id)]);
       setNotice(`Booking ${data.booking_reference} confirmed. Demo payment only; no money was charged.`);
@@ -657,7 +711,7 @@ export default function App() {
                 </div>}
                 {bookingError && <p className="form-error" role="alert">{bookingError}</p>}
                 <div className="modal-actions">
-                  <button className="primary-button" disabled={availabilityLoading || !sessionAvailability || bookingSubtotal <= 0} onClick={continueToCheckout}>Continue to checkout <ChevronRight size={17} /></button>
+                  <button className="primary-button" disabled={availabilityLoading || bookingBusy || !sessionAvailability || bookingSubtotal <= 0} onClick={continueToCheckout}>{bookingBusy ? "Reserving seats…" : "Continue to checkout"} <ChevronRight size={17} /></button>
                   <button className="secondary-button" onClick={() => { toggleSaved(selected.id); setNotice(saved.includes(selected.id) ? "Removed from saved listings." : "Saved for later."); }}><Heart size={16} /> Save</button>
                 </div>
                 <p className="demo-payment-note">Preview inventory and prices are seeded for this academic demo. Availability is not a live venue feed.</p>
@@ -673,6 +727,7 @@ export default function App() {
                   <div><span>Tickets</span><b>{sessionAvailability?.booking_mode === "seats" ? selectedSeatRows.map((seat) => `${seat.row_label}${seat.seat_number}`).join(", ") : `${bookingQuantity} × ${selectedTicket?.name || "Ticket"}`}</b></div>
                   <div><span>Booking under</span><b>{currentUser?.name || currentUser?.email}</b></div>
                   <div><span>Contact email</span><b>{currentUser?.email}</b></div>
+                  {holdExpiresAt && <div><span>Seat reservation</span><b>Held until {new Date(holdExpiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</b></div>}
                   {currentUser?.phone && <div><span>Phone</span><b>{currentUser.phone}</b></div>}
                 </div>
                 <h4>Choose a demo payment method</h4>
@@ -693,7 +748,7 @@ export default function App() {
                 <div className="demo-safe-note"><span>DEMO CHECKOUT</span><p>No real payment is processed. Do not enter bank, card, CVV, UPI PIN or OTP details.</p></div>
                 <label className="booking-terms"><input type="checkbox" checked={bookingAccepted} onChange={(event) => setBookingAccepted(event.target.checked)} /><span>I have reviewed the show details and price breakdown, and understand that this is a simulated booking.</span></label>
                 <div className="modal-actions">
-                  <button className="secondary-button" onClick={() => setBookingStep("select")}>← Back to seats</button>
+                  <button className="secondary-button" onClick={releaseCurrentSeatHold}>← Back to seats</button>
                   <button className="primary-button" disabled={bookingBusy || !bookingAccepted} onClick={submitBooking}>{bookingBusy ? "Processing demo payment…" : `Pay ₹${bookingGrandTotal.toFixed(2)} (Demo)`}</button>
                 </div>
               </div>}
