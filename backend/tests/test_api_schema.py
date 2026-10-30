@@ -79,6 +79,7 @@ def test_demo_payment_methods_are_explicitly_limited():
     properties = app.openapi()["components"]["schemas"]["BookingCreate"]["properties"]
     assert properties["payment_method"]["enum"] == [
         "demo_upi",
+        "demo_upi_qr",
         "demo_card",
         "demo_netbanking",
     ]
