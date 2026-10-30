@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+// Place the real merchant payment QR image at frontend/public/payment-qr.png.
+const PAYMENT_QR_IMAGE_URL = "/payment-qr.png";
 
 const demoMovies = [
   { id: "dm1", title: "Drishyam The Conclusion", language: "Hindi", duration_minutes: 150, certificate: "UA16+", synopsis: "The Salgaonkar family tries to protect the secret behind a past killing as new evidence and a determined Crime Branch officer threaten to reopen the case.", poster_url: "https://imgix.hoyts.com.au/mx/posters/au/drishyam-the-conclusion-3d42e8ed.jpg", release_date: "2026-10-02", demo: true },
@@ -243,6 +245,7 @@ export default function App() {
   const [bookingStep, setBookingStep] = useState("select");
   const [bookingResult, setBookingResult] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("demo_upi");
+  const [paymentQrUnavailable, setPaymentQrUnavailable] = useState(false);
   const [bookingAccepted, setBookingAccepted] = useState(false);
   const [holdExpiresAt, setHoldExpiresAt] = useState(null);
   const [ticketQrDataUrl, setTicketQrDataUrl] = useState("");
@@ -772,7 +775,7 @@ export default function App() {
           <button className="icon-button modal-close" onClick={closeBookingModal} aria-label="Close"><X /></button>
           <ImageOrFallback src={selected.poster_url} fallbackSrc={getCategoryPoster(selected)} alt={selected.title} className="modal-poster" />
           <div className="modal-content">
-            <span className="mini-label">{selected.demo ? "SAMPLE PREVIEW" : selected.language || selected.category?.name || "CINEBOOK"}</span>
+            <span className="mini-label">{selected.demo ? "SAMPLE PREVIEW" : selected.description?.startsWith("CINEBOOK TEST LISTING ONLY.") ? "DEMO BOOKING SESSION" : selected.language || selected.category?.name || "CINEBOOK"}</span>
             <h2 id="modal-title">{selected.title}</h2>
             <p>{selected.description || selected.synopsis || "Explore the details and upcoming sessions for this listing."}</p>
             {selected.event_type && <div className="modal-fact"><MapPin size={16} />{selected.venue?.name || "Venue details"} · {selected.city?.name || "City details"}</div>}
@@ -859,11 +862,27 @@ export default function App() {
                 <h4>Choose a demo payment method</h4>
                 <div className="payment-methods">
                   {[
-                    ["demo_upi", "UPI", "Demo approval · no UPI PIN"],
+                    ["demo_upi", "UPI", "Simulated UPI approval"],
+                    ["demo_upi_qr", "Scan UPI QR", "Show merchant QR · demo confirmation only"],
                     ["demo_card", "Credit / Debit Card", "Test card flow · no card data"],
                     ["demo_netbanking", "Netbanking", "Demo bank redirect"],
                   ].map(([value, label, detail]) => <button type="button" key={value} className={paymentMethod === value ? "payment-method selected" : "payment-method"} onClick={() => setPaymentMethod(value)}><span className="payment-radio">{paymentMethod === value ? "●" : ""}</span><span><b>{label}</b><small>{detail}</small></span></button>)}
                 </div>
+                {paymentMethod === "demo_upi_qr" && <div className="merchant-qr-panel">
+                  <div className="merchant-qr-heading"><b>Scan & pay using any UPI app</b><small>Merchant payment QR · INR ₹{bookingGrandTotal.toFixed(2)}</small></div>
+                  {paymentQrUnavailable ? <div className="merchant-qr-missing">
+                    <Ticket size={22} />
+                    <b>Merchant QR image not configured</b>
+                    <p>Place your genuine UPI QR image at <code>frontend/public/payment-qr.png</code>, then refresh CineBook.</p>
+                  </div> : <img
+                    className="merchant-payment-qr"
+                    src={PAYMENT_QR_IMAGE_URL}
+                    alt="Merchant UPI payment QR code"
+                    onError={() => setPaymentQrUnavailable(true)}
+                    onLoad={() => setPaymentQrUnavailable(false)}
+                  />}
+                  <p className="merchant-qr-disclaimer">Demo only: CineBook cannot verify an external UPI transfer from a static QR. The button below simulates a successful payment and does not confirm that money was received.</p>
+                </div>}
                 <div className="price-breakdown">
                   <div><span>Ticket subtotal</span><b>₹{bookingSubtotal.toFixed(2)}</b></div>
                   <div><span>Taxes</span><b>₹{bookingTax.toFixed(2)}</b></div>
@@ -872,7 +891,7 @@ export default function App() {
                 </div>
                 {bookingError && <p className="form-error" role="alert">{bookingError}</p>}
                 <div className="demo-gateway-panel">
-                  <div><span className="gateway-lock">🔒 TEST GATEWAY</span><b>{paymentMethod === "demo_upi" ? "UPI payment simulation" : paymentMethod === "demo_card" ? "Card payment simulation" : "Netbanking simulation"}</b><small>Selected method: {paymentMethod.replace("demo_", "").replace("_", " ").toUpperCase()}</small></div>
+                  <div><span className="gateway-lock">🔒 TEST GATEWAY</span><b>{paymentMethod === "demo_upi_qr" ? "UPI QR payment · demo" : paymentMethod === "demo_upi" ? "UPI payment simulation" : paymentMethod === "demo_card" ? "Card payment simulation" : "Netbanking simulation"}</b><small>Selected method: {paymentMethod.replace("demo_", "").replace("_", " ").toUpperCase()}</small></div>
                   <div className="gateway-amount">₹{bookingGrandTotal.toFixed(2)}<small>Amount due · INR</small></div>
                 </div>
                 <div className="demo-safe-note"><span>SIMULATED PAYMENT PAGE</span><p>This gateway is for project testing only. It does not contact a bank or payment network. Never enter real card numbers, CVV, UPI PIN, OTP or banking credentials.</p></div>
