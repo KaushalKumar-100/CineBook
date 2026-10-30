@@ -228,3 +228,40 @@ img { color: transparent; }
     transition-duration: .01ms !important;
   }
 }
+
+
+/* Venue discovery — uses the same CineBook surface and accent tokens. */
+.venue-discovery {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 34px 30px 54px;
+  border-top: 1px solid var(--line);
+}
+.venue-discovery-header { margin-bottom: 24px; }
+.venue-search {
+  display: flex; align-items: center; gap: 10px; min-width: min(310px, 100%);
+  padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px;
+  background: #1a191f; color: #a8a3ae;
+}
+.venue-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #fff; font: inherit; font-size: 12px; }
+.venue-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 13px; }
+.venue-card {
+  display: grid; grid-template-columns: 54px minmax(0,1fr) 18px; align-items: center; gap: 13px;
+  padding: 17px; border: 1px solid var(--line); border-radius: 14px; background: #18181e;
+  color: #f7f1f4; text-align: left; cursor: pointer; transition: transform .2s,border-color .2s;
+}
+.venue-card:hover { transform: translateY(-3px); border-color: #f47c5580; }
+.venue-card-mark { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 12px; background: linear-gradient(140deg,#58352f,#28213a); color: var(--accent); }
+.venue-card h3 { margin: 5px 0 4px; font-size: 14px; }
+.venue-card p { margin: 0 0 7px; color: #a8a2ae; font-size: 10px; line-height: 1.5; }
+.venue-card small { color: #77717f; font-size: 9px; }
+.venue-back { margin: -3px 0 18px; }
+.venue-events-panel { margin-top: 5px; }
+@media(max-width:900px) { .venue-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width:760px) {
+  .venue-discovery { padding: 30px 20px 43px; }
+  .venue-discovery-header { gap: 17px; }
+  .venue-search { width: 100%; }
+  .venue-grid { grid-template-columns: 1fr; }
+  .venue-card { padding: 14px; }
+}
