@@ -817,7 +817,7 @@ export default function App() {
                 </div>
                 {bookingError && <p className="form-error" role="alert">{bookingError}</p>}
                 <div className="demo-gateway-panel">
-                  <div><span className="gateway-lock"><icon></icon> TEST GATEWAY</span><b>{paymentMethod === "demo_upi" ? "UPI payment simulation" : paymentMethod === "demo_card" ? "Card payment simulation" : "Netbanking simulation"}</b><small>Selected method: {paymentMethod.replace("demo_", "").replace("_", " ").toUpperCase()}</small></div>
+                  <div><span className="gateway-lock">🔒 TEST GATEWAY</span><b>{paymentMethod === "demo_upi" ? "UPI payment simulation" : paymentMethod === "demo_card" ? "Card payment simulation" : "Netbanking simulation"}</b><small>Selected method: {paymentMethod.replace("demo_", "").replace("_", " ").toUpperCase()}</small></div>
                   <div className="gateway-amount">₹{bookingGrandTotal.toFixed(2)}<small>Amount due · INR</small></div>
                 </div>
                 <div className="demo-safe-note"><span>SIMULATED PAYMENT PAGE</span><p>This gateway is for project testing only. It does not contact a bank or payment network. Never enter real card numbers, CVV, UPI PIN, OTP or banking credentials.</p></div>
