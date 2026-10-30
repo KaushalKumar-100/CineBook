@@ -17,9 +17,9 @@ Copy-Item .env.example .env
 
 Edit `backend/.env` locally. Set your MySQL user/password and replace `SECRET_KEY` with a long random secret. Keep `.env` private.
 
-Create the database by running `backend/sql/schema.sql` in MySQL Workbench (it creates `cinebook_db` and the current tables). For an existing CineBook database, first take a backup and then run `backend/sql/migrations/002_venue_booking_flow.sql` to add the venue/show booking fields and inventory tables without deleting demo data. The optional `backend/sql/seed_demo.sql` adds cities, categories, a demo cinema, one sample movie, 40 seats, and a future show. For the complete sample including a major concert and local workshop, use the interactive Python seeder below after configuring `.env`.
+Create the database by running `backend/sql/schema.sql` in MySQL Workbench (it creates `cinebook_db` and the current tables). For an existing CineBook database, first take a backup and then run `backend/sql/migrations/002_venue_booking_flow.sql` to add the venue/show booking fields and inventory tables without deleting demo data. The optional `backend/sql/seed_demo.sql` adds a small legacy starter dataset. For the complete sample catalogue and bookable demo inventory, use the interactive Python seeder below after configuring `.env`. On an existing database, apply migration `002_venue_booking_flow.sql` after taking a backup before running the seeder.
 
-Run the local-only demo seeder from `backend/` (it creates missing tables and prompts for an organizer email/password; no default credentials are stored in the project):
+Run the local-only demo seeder from `backend/` (it creates missing tables and prompts for an organizer email/password; no default credentials are stored in the project). It adds five movie listings, 60 cinema seats across Standard/Premium/Recliner price tiers, the Bhumika Marathi play at Vasantrao Deshpande Hall in Nagpur, and Mumbai event samples including The Messi Experience, Papa Yaar by Zakir Khan, and CALVIN HARRIS. Seeded schedules, capacity, prices, tax and convenience fees are demo values:
 
 ```powershell
 python -m scripts.seed_demo
@@ -70,13 +70,13 @@ For local coursework, missing tables are auto-created only when `APP_ENV=develop
 - `POST /api/v1/manage/seats/bulk?venue_space_id=1&seats_per_row=10` with a JSON array of row labels as the body
 
 ### Booking (login required)
-- `POST /api/v1/bookings`: assigned seats: `{"session_id":1,"seat_ids":[1,2]}`; general admission: `{"session_id":2,"ticket_type_id":1,"quantity":2}`.
+- `POST /api/v1/bookings`: assigned seats: `{"session_id":1,"seat_ids":[1,2],"payment_method":"demo_upi"}`; general admission: `{"session_id":2,"ticket_type_id":1,"quantity":2,"payment_method":"demo_card"}`. Payment method values are `demo_upi`, `demo_card`, or `demo_netbanking`.
 - `GET /api/v1/bookings/me`
 - `GET /api/v1/bookings/{id}`
 - `GET /api/v1/bookings/{id}/payments`
 - `POST /api/v1/bookings/{id}/cancel`
 
-Payments/refunds are simulated for coursework. No card information is collected and no real payment provider is connected.
+Payments/refunds are simulated for coursework. The frontend has a show/seat selection step, checkout summary with taxes and fee, demo payment method choice, terms acknowledgement, confirmation and printable ticket code. No card/UPI credentials are collected and no real payment provider is connected. A generated ticket code is not valid for admission to the real venue.
 
 ## Create first administrator
 Register your own account via `POST /api/v1/auth/register`. Then, using your local MySQL Workbench and after confirming the email, promote only your own account:
@@ -100,4 +100,4 @@ The project demonstrates normalization, PK/FK relationships, unique constraints,
 - `bookings` stores backend-calculated subtotal, tax, convenience fees, expiry, and optional ticket code.
 - `booking_tickets` stores issued ticket codes separately from seat inventory.
 
-The discovery endpoints are database-backed. Venue poster/image URLs are not yet stored in the venue model, so the venue API currently returns an empty `images` list rather than inventing URLs.
+The discovery endpoints are database-backed. Venue poster/image URLs are not yet stored in the venue model, so the venue API currently returns an empty `images` list rather than inventing URLs. Movie/play plot summaries in the demo catalogue are sourced from the supplied screenshots/listing descriptions; all show dates and prices used by the demo seeder are explicitly sample values.
