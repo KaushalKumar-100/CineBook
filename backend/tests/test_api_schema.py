@@ -17,6 +17,8 @@ def test_core_database_tables_are_registered():
         "bookings",
         "booking_items",
         "payments",
+        "show_seat_holds",
+        "booking_tickets",
     }
     assert expected.issubset(set(Base.metadata.tables))
 
