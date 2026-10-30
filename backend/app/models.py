@@ -78,7 +78,7 @@ class Event(TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(Text)
     event_type: Mapped[str] = mapped_column(Enum("local", "major", name="event_type"), default="local", nullable=False)
-    status: Mapped[str] = mapped_column(Enum("draft", "published", "cancelled", "completed", name="event_status"), default="draft", nullable=False, index=True)
+    status: Mapped[str] = mapped_column(Enum("draft", "pending_approval", "published", "cancelled", "completed", "rejected", name="event_status"), default="draft", nullable=False, index=True)
     poster_url: Mapped[str | None] = mapped_column(String(1000))
     organizer: Mapped[User] = relationship()
     city: Mapped[City] = relationship()
@@ -98,6 +98,7 @@ class SessionEvent(Base):
     base_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     tax_percent: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("0.00"), nullable=False)
     convenience_fee: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
+    booking_mode: Mapped[str] = mapped_column(Enum("assigned", "general_admission", name="session_booking_mode"), default="general_admission", nullable=False)
     status: Mapped[str] = mapped_column(Enum("scheduled", "cancelled", "completed", name="session_status"), default="scheduled", nullable=False)
     event: Mapped[Event | None] = relationship(back_populates="sessions")
     movie: Mapped[Movie | None] = relationship()
@@ -196,3 +197,88 @@ class BookingTicket(Base):
     booking_id: Mapped[int] = mapped_column(ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
     ticket_code: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     issued_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    checked_in_at: Mapped[datetime | None] = mapped_column(DateTime)
+    checked_in_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+
+
+
+class OrganizerApplication(TimestampMixin, Base):
+    __tablename__ = "organizer_applications"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    organization_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    contact_phone: Mapped[str] = mapped_column(String(30), nullable=False)
+    website: Mapped[str | None] = mapped_column(String(500))
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Enum("pending", "approved", "rejected", name="organizer_application_status"), default="pending", nullable=False, index=True)
+    reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    review_note: Mapped[str | None] = mapped_column(String(1000))
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+    reviewer: Mapped[User | None] = relationship(foreign_keys=[reviewed_by])
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(180), nullable=False)
+    message: Mapped[str] = mapped_column(String(1000), nullable=False)
+    kind: Mapped[str] = mapped_column(String(40), default="info", nullable=False)
+    link: Mapped[str | None] = mapped_column(String(500))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+
+
+class EventReview(TimestampMixin, Base):
+    __tablename__ = "event_reviews"
+    __table_args__ = (
+        UniqueConstraint("event_id", "user_id", name="uq_event_review_user"),
+        CheckConstraint("rating BETWEEN 1 AND 5", name="ck_event_review_rating"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    booking_id: Mapped[int] = mapped_column(ForeignKey("bookings.id", ondelete="RESTRICT"), nullable=False, unique=True)
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    comment: Mapped[str | None] = mapped_column(String(2000))
+    user: Mapped[User] = relationship()
+    event: Mapped[Event] = relationship()
+
+
+class RefundRequest(TimestampMixin, Base):
+    __tablename__ = "refund_requests"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    booking_id: Mapped[int] = mapped_column(ForeignKey("bookings.id", ondelete="RESTRICT"), nullable=False, unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    payment_id: Mapped[int | None] = mapped_column(ForeignKey("payments.id", ondelete="SET NULL"))
+    reason: Mapped[str] = mapped_column(String(1000), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    status: Mapped[str] = mapped_column(Enum("requested", "approved", "rejected", "processed", name="refund_request_status"), default="requested", nullable=False, index=True)
+    reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    resolution_note: Mapped[str | None] = mapped_column(String(1000))
+    booking: Mapped[Booking] = relationship()
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    action: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    entity_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    entity_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    details: Mapped[str | None] = mapped_column(Text)
+    ip_address: Mapped[str | None] = mapped_column(String(45))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False, index=True)
