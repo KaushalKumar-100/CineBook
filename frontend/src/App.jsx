@@ -500,6 +500,19 @@ export default function App() {
     }
   }
 
+  function closeBookingModal() {
+    if (holdExpiresAt && token && selectedSessionId) {
+      fetch(`${API_BASE}/api/v1/bookings/holds/${selectedSessionId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {
+        // The server-side hold will still expire automatically after its TTL.
+      });
+    }
+    setHoldExpiresAt(null);
+    setSelected(null);
+  }
+
   async function submitBooking() {
     if (!bookingAccepted) {
       setBookingError("Please accept the demo booking terms before continuing.");
@@ -646,9 +659,9 @@ export default function App() {
 
       {authOpen && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setAuthOpen(false); }}><div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><button className="icon-button modal-close" onClick={() => setAuthOpen(false)} aria-label="Close"><X /></button><span className="mini-label">WELCOME TO CINEBOOK</span><h2 id="auth-title">{authMode === "login" ? "Good to see you." : "Create your account."}</h2><p className="auth-subtitle">{authMode === "login" ? "Sign in to save your plans and book tickets." : "Join CineBook and discover things happening around you."}</p><form className="auth-form" onSubmit={submitAuth}>{authMode === "register" && <><label>Full name<input value={authName} onChange={(event) => setAuthName(event.target.value)} minLength={2} required autoComplete="name" /></label><label>Phone number <span className="field-optional">optional</span><input type="tel" value={authPhone} onChange={(event) => setAuthPhone(event.target.value)} maxLength={30} autoComplete="tel" /></label></>}<label>Email address<input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} required autoComplete="email" /></label><label>Password<input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} minLength={8} required autoComplete={authMode === "login" ? "current-password" : "new-password"} /></label>{authError && <p className="form-error" role="alert">{authError}</p>}<button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? "Please wait..." : authMode === "login" ? "Sign in" : "Create account"}</button></form><p className="auth-switch">{authMode === "login" ? "New to CineBook?" : "Already have an account?"} <button onClick={() => { setAuthMode(authMode === "login" ? "register" : "login"); setAuthError(""); }}> {authMode === "login" ? "Create account" : "Sign in"}</button></p></div></div>}
 
-      {selected && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget && bookingStep !== "confirmed") setSelected(null); }}>
+      {selected && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget && bookingStep !== "confirmed") closeBookingModal(); }}>
         <div className={`detail-modal booking-modal ${bookingStep === "confirmed" ? "ticket-confirmed-modal" : ""}`} role="dialog" aria-modal="true" aria-labelledby="modal-title">
-          <button className="icon-button modal-close" onClick={() => setSelected(null)} aria-label="Close"><X /></button>
+          <button className="icon-button modal-close" onClick={closeBookingModal} aria-label="Close"><X /></button>
           <ImageOrFallback src={selected.poster_url} fallbackSrc={getCategoryPoster(selected)} alt={selected.title} className="modal-poster" />
           <div className="modal-content">
             <span className="mini-label">{selected.demo ? "SAMPLE PREVIEW" : selected.language || selected.category?.name || "CINEBOOK"}</span>
