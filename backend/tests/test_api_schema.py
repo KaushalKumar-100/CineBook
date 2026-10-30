@@ -42,3 +42,24 @@ def test_expected_api_routes_are_registered():
         "/api/v1/manage/seats/bulk",
     }
     assert expected.issubset(paths)
+
+
+def test_venue_discovery_routes_are_registered():
+    paths = set(app.openapi()["paths"])
+    assert "/api/v1/venues" in paths
+    assert "/api/v1/venues/{venue_id}" in paths
+    assert "/api/v1/venues/{venue_id}/events" in paths
+
+
+def test_show_seat_inventory_tables_are_registered():
+    assert "show_seat_holds" in Base.metadata.tables
+    assert "booking_tickets" in Base.metadata.tables
+
+
+def test_sessions_have_show_specific_pricing_columns():
+    columns = set(Base.metadata.tables["sessions"].columns.keys())
+    assert {"tax_percent", "convenience_fee"}.issubset(columns)
+
+
+def test_seats_have_reusable_layout_category():
+    assert "seat_category" in Base.metadata.tables["seats"].columns
