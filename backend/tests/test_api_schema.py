@@ -76,7 +76,10 @@ def test_booking_schema_stores_checkout_breakdown_and_ticket_code():
 
 
 def test_demo_payment_methods_are_explicitly_limited():
-    from app.schemas import BookingCreate
-
-    assert BookingCreate.model_fields["payment_method"].annotation == str
-    assert BookingCreate.model_fields["payment_method"].default == "demo_upi"
+    properties = app.openapi()["components"]["schemas"]["BookingCreate"]["properties"]
+    assert properties["payment_method"]["enum"] == [
+        "demo_upi",
+        "demo_card",
+        "demo_netbanking",
+    ]
+    assert properties["payment_method"]["default"] == "demo_upi"
