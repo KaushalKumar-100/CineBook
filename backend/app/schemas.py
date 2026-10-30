@@ -69,6 +69,8 @@ class SessionCreate(BaseModel):
     starts_at: datetime
     ends_at: datetime
     base_price: Decimal = Field(ge=0, max_digits=10, decimal_places=2)
+    tax_percent: Decimal = Field(default=Decimal("0.00"), ge=0, le=100, max_digits=5, decimal_places=2)
+    convenience_fee: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=10, decimal_places=2)
 
 class TicketTypeCreate(BaseModel):
     session_id: int
@@ -83,12 +85,30 @@ class BookingCreate(BaseModel):
     quantity: int = Field(default=1, ge=1, le=20)
     seat_ids: list[int] | None = Field(default=None, max_length=20)
 
+class SeatHoldCreate(BaseModel):
+    session_id: int
+    seat_ids: list[int] = Field(min_length=1, max_length=10)
+
+class SeatCategoryPriceCreate(BaseModel):
+    seat_category: str = Field(min_length=1, max_length=40)
+    price: Decimal = Field(ge=0, max_digits=10, decimal_places=2)
+
+class PaymentVerify(BaseModel):
+    razorpay_order_id: str = Field(min_length=5, max_length=100)
+    razorpay_payment_id: str = Field(min_length=5, max_length=100)
+    razorpay_signature: str = Field(min_length=20, max_length=256)
+
 class BookingOut(BaseModel):
     id: int
     booking_reference: str
     session_id: int
     status: str
     total_amount: Decimal
+    subtotal_amount: Decimal = Decimal("0.00")
+    tax_amount: Decimal = Decimal("0.00")
+    convenience_amount: Decimal = Decimal("0.00")
+    expires_at: datetime | None = None
+    ticket_code: str | None = None
     model_config = ConfigDict(from_attributes=True)
 
 class PaymentOut(BaseModel):
@@ -99,3 +119,13 @@ class PaymentOut(BaseModel):
     amount: Decimal
     status: str
     model_config = ConfigDict(from_attributes=True)
+
+
+class BookingQuote(BaseModel):
+    session_id: int
+    seat_lines: list[dict]
+    subtotal: Decimal
+    tax_percent: Decimal
+    tax_amount: Decimal
+    convenience_fee: Decimal
+    total_amount: Decimal
