@@ -17,7 +17,7 @@ CineBook is a DBMS-focused ticket-booking platform inspired by BookMyShow. It su
 - Numbered cinema seats and capacity-limited general-admission tickets.
 - Booking history, cancellation, and simulated payment/refund records.
 - Full MySQL DDL, repeatable SQL seed data, and an interactive major/local event demo seeder.
-- BookMyShow-inspired discovery, venue/showtime selection, price-tiered seat maps, temporary seat holds, a simulated payment gateway with success/decline test paths, booking confirmation, booking history, and printable QR e-tickets.
+- BookMyShow-inspired discovery, venue/showtime selection, price-tiered seat maps, temporary seat holds, a simulated payment gateway with UPI QR display and success/decline test paths, booking confirmation, booking history, and printable QR e-tickets.
 
 ## Quick start (Windows)
 1. Run `backend/sql/schema.sql` in MySQL Workbench.
@@ -55,3 +55,6 @@ The project is a strong local/demo foundation, but a public ticketing service ne
 - Build and test both services in CI; verify concurrency and booking rollback behavior against the same MySQL engine/version used in production.
 
 The frontend now includes locally generated SVG poster artwork for movies, concerts, comedy, campus events, workshops, and general experiences. These local posters are reliable fallback artwork; listing-specific external poster URLs remain optional.
+
+
+For the optional merchant UPI QR display, place your own valid merchant QR image at `frontend/public/payment-qr.png`. Scanning a static QR happens outside CineBook and cannot be verified by this demo app; the confirmation button remains simulated.
