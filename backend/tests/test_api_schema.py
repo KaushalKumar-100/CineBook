@@ -63,3 +63,20 @@ def test_sessions_have_show_specific_pricing_columns():
 
 def test_seats_have_reusable_layout_category():
     assert "seat_category" in Base.metadata.tables["seats"].columns
+
+
+def test_booking_schema_stores_checkout_breakdown_and_ticket_code():
+    booking_columns = set(Base.metadata.tables["bookings"].columns.keys())
+    assert {
+        "subtotal_amount",
+        "tax_amount",
+        "convenience_amount",
+        "ticket_code",
+    }.issubset(booking_columns)
+
+
+def test_demo_payment_methods_are_explicitly_limited():
+    from app.schemas import BookingCreate
+
+    assert BookingCreate.model_fields["payment_method"].annotation == str
+    assert BookingCreate.model_fields["payment_method"].default == "demo_upi"
