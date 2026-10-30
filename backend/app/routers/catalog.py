@@ -319,7 +319,7 @@ def session_availability(session_id: int, db: DbSession):
         "tax_percent": session.tax_percent,
         "convenience_fee": session.convenience_fee,
         "status": session.status,
-        "booking_mode": "seats" if session.movie_id is not None else "general_admission",
+        "booking_mode": "seats" if session.booking_mode == "assigned" else "general_admission",
         "seats": [
             {
                 "id": seat.id,
