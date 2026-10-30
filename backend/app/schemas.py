@@ -1,5 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl
 
 class UserRegister(BaseModel):
@@ -84,6 +86,7 @@ class BookingCreate(BaseModel):
     ticket_type_id: int | None = None
     quantity: int = Field(default=1, ge=1, le=20)
     seat_ids: list[int] | None = Field(default=None, max_length=20)
+    payment_method: Literal["demo_upi", "demo_card", "demo_netbanking"] = "demo_upi"
 
 class SeatHoldCreate(BaseModel):
     session_id: int
