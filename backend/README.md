@@ -19,7 +19,7 @@ Edit `backend/.env` locally. Set your MySQL user/password and replace `SECRET_KE
 
 Create the database by running `backend/sql/schema.sql` in MySQL Workbench (it creates `cinebook_db` and the current tables). For an existing CineBook database, first take a backup and then run `backend/sql/migrations/002_venue_booking_flow.sql` to add the venue/show booking fields and inventory tables without deleting demo data. The optional `backend/sql/seed_demo.sql` adds a small legacy starter dataset. For the complete sample catalogue and bookable demo inventory, use the interactive Python seeder below after configuring `.env`. On an existing database, apply migration `002_venue_booking_flow.sql` after taking a backup before running the seeder.
 
-Run the local-only demo seeder from `backend/` (it creates missing tables and prompts for an organizer email/password; no default credentials are stored in the project). It adds five movie listings, 60 cinema seats across Standard/Premium/Recliner price tiers, the Bhumika Marathi play at Vasantrao Deshpande Hall in Nagpur, and Mumbai event samples including The Messi Experience, Papa Yaar by Zakir Khan, and CALVIN HARRIS. Seeded schedules, capacity, prices, tax and convenience fees are demo values:
+Run the local-only demo seeder from `backend/` (it creates missing tables and prompts for an organizer email/password; no default credentials are stored in the project). It adds five movie listings, 60 cinema seats across Standard/Premium/Recliner price tiers, the Bhumika Marathi play at Vasantrao Deshpande Hall in Nagpur, Mumbai event samples including The Messi Experience, Papa Yaar by Zakir Khan, and CALVIN HARRIS, plus Delhi, Bengaluru, Hyderabad, Kolkata, and Pune in the city directory. The five new cities are directory entries only; venues and actual events must be supplied by verified imports or organizer/admin records. Seeded schedules, capacity, prices, tax and convenience fees are demo values:
 
 ```powershell
 python -m scripts.seed_demo
@@ -46,7 +46,7 @@ For local coursework, missing tables are auto-created only when `APP_ENV=develop
 - `GET /api/v1/auth/me`: current user.
 
 ### Public discovery
-- `GET /api/v1/cities`
+- `GET /api/v1/cities` — returns all seeded and administrator-created cities, including Guwahati, Tezpur, Nagpur, Mumbai, Delhi, Bengaluru, Hyderabad, Kolkata, and Pune after demo seeding.
 - `GET /api/v1/venues?city_id=1&q=stadium&venue_type=stadium` — city-scoped venue search
 - `GET /api/v1/venues/{venue_id}` — venue details and capacity summary
 - `GET /api/v1/venues/{venue_id}/events?category_id=1&sort=date` — published upcoming events at that venue only
