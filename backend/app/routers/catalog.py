@@ -17,12 +17,8 @@ def list_cities(db: DbSession):
 
 @router.get("/venues")
 def list_venues(db: DbSession, city_id: int | None = None):
-    stmt = (
-        select(Venue)
-        .where(Venue.is_active.is_(True))
-        .options(joinedload(Venue.city))
-        .order_by(Venue.name)
-    )
+    stmt = (select(Venue).where(Venue.is_active.is_(True))
+            .options(joinedload(Venue.city)).order_by(Venue.name))
     if city_id is not None:
         stmt = stmt.where(Venue.city_id == city_id)
     return db.scalars(stmt).unique().all()
@@ -32,9 +28,8 @@ def list_venues(db: DbSession, city_id: int | None = None):
 def venue_spaces(venue_id: int, db: DbSession):
     if not db.get(Venue, venue_id):
         raise HTTPException(status_code=404, detail="Venue not found")
-    return db.scalars(
-        select(VenueSpace).where(VenueSpace.venue_id == venue_id).order_by(VenueSpace.name)
-    ).all()
+    return db.scalars(select(VenueSpace).where(
+        VenueSpace.venue_id == venue_id).order_by(VenueSpace.name)).all()
 
 
 @router.get("/movies")
@@ -53,12 +48,9 @@ def list_events(
     event_type: str | None = Query(default=None, pattern="^(local|major)$"),
     q: str | None = Query(default=None, max_length=120),
 ):
-    stmt = (
-        select(Event)
-        .where(Event.status == "published")
-        .options(joinedload(Event.city), joinedload(Event.venue), joinedload(Event.category))
-        .order_by(Event.created_at.desc())
-    )
+    stmt = (select(Event).where(Event.status == "published")
+            .options(joinedload(Event.city), joinedload(Event.venue), joinedload(Event.category))
+            .order_by(Event.created_at.desc()))
     if city_id is not None:
         stmt = stmt.where(Event.city_id == city_id)
     if category_id is not None:
@@ -68,49 +60,27 @@ def list_events(
     if q:
         stmt = stmt.where(Event.title.ilike(f"%{q}%"))
     events = db.scalars(stmt).unique().all()
-    result = []
     now = datetime.now()
+    result = []
     for event in events:
-        upcoming = db.scalar(
-            select(SessionEvent)
-            .where(
-                SessionEvent.event_id == event.id,
-                SessionEvent.status == "scheduled",
-                SessionEvent.starts_at >= now,
-            )
-            .order_by(SessionEvent.starts_at)
-            .limit(1)
-        )
+        upcoming = db.scalar(select(SessionEvent).where(
+            SessionEvent.event_id == event.id,
+            SessionEvent.status == "scheduled",
+            SessionEvent.starts_at >= now,
+        ).order_by(SessionEvent.starts_at).limit(1))
         result.append({
-            "id": event.id,
-            "organizer_id": event.organizer_id,
-            "city_id": event.city_id,
-            "category_id": event.category_id,
-            "venue_id": event.venue_id,
-            "title": event.title,
-            "description": event.description,
-            "event_type": event.event_type,
-            "status": event.status,
-            "poster_url": event.poster_url,
-            "created_at": event.created_at,
-            "updated_at": event.updated_at,
-            "city": {
-                "id": event.city.id,
-                "name": event.city.name,
-                "state": event.city.state,
-                "country": event.city.country,
-            },
-            "venue": {
-                "id": event.venue.id,
-                "name": event.venue.name,
-                "venue_type": event.venue.venue_type,
-                "address": event.venue.address,
-            },
-            "category": {
-                "id": event.category.id,
-                "name": event.category.name,
-                "description": event.category.description,
-            },
+            "id": event.id, "organizer_id": event.organizer_id,
+            "city_id": event.city_id, "category_id": event.category_id,
+            "venue_id": event.venue_id, "title": event.title,
+            "description": event.description, "event_type": event.event_type,
+            "status": event.status, "poster_url": event.poster_url,
+            "created_at": event.created_at, "updated_at": event.updated_at,
+            "city": {"id": event.city.id, "name": event.city.name,
+                     "state": event.city.state, "country": event.city.country},
+            "venue": {"id": event.venue.id, "name": event.venue.name,
+                      "venue_type": event.venue.venue_type, "address": event.venue.address},
+            "category": {"id": event.category.id, "name": event.category.name,
+                         "description": event.category.description},
             "session_id": upcoming.id if upcoming else None,
             "starts_at": upcoming.starts_at if upcoming else None,
             "ends_at": upcoming.ends_at if upcoming else None,
@@ -123,7 +93,6 @@ def list_categories(db: DbSession):
     return db.scalars(select(EventCategory).order_by(EventCategory.name)).all()
 
 
-
 @router.get("/sessions/{session_id}/availability")
 def session_availability(session_id: int, db: DbSession):
     session = db.get(SessionEvent, session_id)
@@ -133,66 +102,42 @@ def session_availability(session_id: int, db: DbSession):
         raise HTTPException(status_code=404, detail="Published event session not found")
     if session.movie_id is not None and (not session.movie or not session.movie.is_active):
         raise HTTPException(status_code=404, detail="Active movie session not found")
+
     booked_seat_ids = set(db.scalars(
-        select(BookingItem.seat_id)
-        .join(Booking, BookingItem.booking_id == Booking.id)
-        .where(
-            Booking.session_id == session_id,
-            Booking.status == "confirmed",
-            BookingItem.seat_id.is_not(None),
-        )
-    ).all())
-    seats = db.scalars(
-        select(Seat)
-        .where(Seat.venue_space_id == session.venue_space_id)
-        .order_by(Seat.row_label, Seat.seat_number)
-    ).all()
-    ticket_types = db.scalars(
-        select(TicketType)
-        .where(TicketType.session_id == session_id, TicketType.is_active.is_(True))
-        .order_by(TicketType.price, TicketType.name)
-    ).all()
+        select(BookingItem.seat_id).join(Booking, BookingItem.booking_id == Booking.id)
+        .where(Booking.session_id == session_id, Booking.status == "confirmed",
+               BookingItem.seat_id.is_not(None))).all())
+    seats = db.scalars(select(Seat).where(
+        Seat.venue_space_id == session.venue_space_id
+    ).order_by(Seat.row_label, Seat.seat_number)).all()
+    ticket_types = db.scalars(select(TicketType).where(
+        TicketType.session_id == session_id, TicketType.is_active.is_(True)
+    ).order_by(TicketType.price, TicketType.name)).all()
+
     ticket_availability = []
     for ticket in ticket_types:
-        sold = db.scalar(
-            select(func.coalesce(func.sum(BookingItem.quantity), 0))
+        sold = db.scalar(select(func.coalesce(func.sum(BookingItem.quantity), 0))
             .join(Booking, BookingItem.booking_id == Booking.id)
-            .where(
-                Booking.session_id == session_id,
-                Booking.status == "confirmed",
-                BookingItem.ticket_type_id == ticket.id,
-            )
-        ) or 0
+            .where(Booking.session_id == session_id, Booking.status == "confirmed",
+                   BookingItem.ticket_type_id == ticket.id)) or 0
         ticket_availability.append({
-            "id": ticket.id,
-            "name": ticket.name,
-            "description": ticket.description,
-            "price": ticket.price,
-            "capacity": ticket.capacity,
+            "id": ticket.id, "name": ticket.name, "description": ticket.description,
+            "price": ticket.price, "capacity": ticket.capacity,
             "remaining": max(0, ticket.capacity - sold),
         })
+
     return {
-        "session_id": session.id,
-        "event_id": session.event_id,
-        "movie_id": session.movie_id,
-        "venue_space_id": session.venue_space_id,
-        "starts_at": session.starts_at,
-        "ends_at": session.ends_at,
-        "base_price": session.base_price,
-        "status": session.status,
+        "session_id": session.id, "event_id": session.event_id,
+        "movie_id": session.movie_id, "venue_space_id": session.venue_space_id,
+        "starts_at": session.starts_at, "ends_at": session.ends_at,
+        "base_price": session.base_price, "status": session.status,
         "booking_mode": "seats" if session.movie_id is not None else "general_admission",
-        "seats": [
-            {
-                "id": seat.id,
-                "row_label": seat.row_label,
-                "seat_number": seat.seat_number,
-                "seat_type": seat.seat_type,
-                "available": seat.id not in booked_seat_ids,
-            }
-            for seat in seats
-        ],
+        "seats": [{"id": seat.id, "row_label": seat.row_label,
+                   "seat_number": seat.seat_number, "seat_type": seat.seat_type,
+                   "available": seat.id not in booked_seat_ids} for seat in seats],
         "ticket_types": ticket_availability,
     }
+
 
 @router.get("/sessions")
 def list_sessions(
@@ -201,21 +146,18 @@ def list_sessions(
     movie_id: int | None = None,
     from_time: datetime | None = None,
 ):
-    stmt = (
-        select(SessionEvent)
-        .outerjoin(Event, SessionEvent.event_id == Event.id)
+    if event_id is not None and movie_id is not None:
+        raise HTTPException(status_code=422, detail="Filter by event_id or movie_id, not both")
+    stmt = (select(SessionEvent).outerjoin(Event, SessionEvent.event_id == Event.id)
         .outerjoin(Movie, SessionEvent.movie_id == Movie.id)
-        .where(
-            SessionEvent.status == "scheduled",
-            or_(SessionEvent.event_id.is_(None), Event.status == "published"),
-            or_(SessionEvent.movie_id.is_(None), Movie.is_active.is_(True)),
-        )
-        .order_by(SessionEvent.starts_at)
-    )
+        .where(SessionEvent.status == "scheduled",
+               or_(SessionEvent.event_id.is_(None), Event.status == "published"),
+               or_(SessionEvent.movie_id.is_(None), Movie.is_active.is_(True)))
+        .order_by(SessionEvent.starts_at))
     if event_id is not None:
         stmt = stmt.where(SessionEvent.event_id == event_id)
     if movie_id is not None:
         stmt = stmt.where(SessionEvent.movie_id == movie_id)
-    if from_time:
+    if from_time is not None:
         stmt = stmt.where(SessionEvent.starts_at >= from_time)
     return db.scalars(stmt).all()
