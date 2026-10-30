@@ -58,6 +58,7 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
   const [eventForm, setEventForm] = useState({ title: "", description: "", city_id: "", category_id: "", venue_id: "", venue_space_id: "", starts_at: "", duration: 120, booking_mode: "general_admission", price: 499, premium_price: 799, capacity: 100, poster_url: "" });
   const [seatLayout, setSeatLayout] = useState({ venue_space_id: "", rows: "A,B,C,D", seats_per_row: 10 });
   const [newVenue, setNewVenue] = useState({ city_id: "", name: "", venue_type: "auditorium", address: "" });
+  const [newSpace, setNewSpace] = useState({ venue_id: "", name: "", space_type: "hall", capacity: 100 });
   const [userQuery, setUserQuery] = useState("");
   const [tmdbQuery, setTmdbQuery] = useState("");
   const [tmdbResults, setTmdbResults] = useState([]);
@@ -309,6 +310,21 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
     }), "Venue created.");
   }
 
+  async function createVenueSpace(event) {
+    event.preventDefault();
+    await runAction(() => request(apiBase, token, "/manage/venue-spaces", {
+      method: "POST",
+      body: JSON.stringify({ ...newSpace, venue_id: Number(newSpace.venue_id), capacity: Number(newSpace.capacity) }),
+    }), "Venue space created.");
+  }
+
+  async function toggleVenue(venueId, isActive) {
+    await runAction(() => request(apiBase, token, `/portal/admin/venues/${venueId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_active: !isActive }),
+    }), "Venue status updated.");
+  }
+
   async function searchTmdb(event) {
     event.preventDefault();
     setError("");
@@ -429,7 +445,7 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
                 <div className="span-2"><button className="secondary-button" disabled={busy}>Create seat layout</button><p className="portal-muted">Rows must be unique and total seats cannot exceed venue capacity.</p></div>
               </form>
             </Panel>
-            {isAdmin && <Panel title="Create a venue" subtitle="Add a venue directory record; then configure spaces/seats through the management API">
+            {isAdmin && <Panel title="Create a venue" subtitle="Register a venue in a city, then add its halls/screens and seating layout">
               <form className="portal-form portal-form-grid" onSubmit={createVenue}>
                 <label>City<select required value={newVenue.city_id} onChange={(e) => setNewVenue({ ...newVenue, city_id: e.target.value })}><option value="">Choose city</option>{cities.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
                 <label>Venue name<input required value={newVenue.name} onChange={(e) => setNewVenue({ ...newVenue, name: e.target.value })} /></label>
@@ -438,6 +454,18 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
                 <div className="span-2"><button className="secondary-button" disabled={busy}>Add venue</button></div>
               </form>
             </Panel>}
+            {(isAdmin || isOrganizer) && <Panel title="Add a venue space" subtitle="Create a hall, stage, screen or open area inside a venue you manage">
+              <form className="portal-form portal-form-grid" onSubmit={createVenueSpace}>
+                <label>Venue<select required value={newSpace.venue_id} onChange={(e) => setNewSpace({ ...newSpace, venue_id: e.target.value })}><option value="">Choose venue</option>{venues.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
+                <label>Space name<input required value={newSpace.name} onChange={(e) => setNewSpace({ ...newSpace, name: e.target.value })} placeholder="Main Hall / Screen 1" /></label>
+                <label>Space type<select value={newSpace.space_type} onChange={(e) => setNewSpace({ ...newSpace, space_type: e.target.value })}>{["screen","hall","stage","open_area","other"].map((v) => <option key={v} value={v}>{v.replaceAll("_", " ")}</option>)}</select></label>
+                <label>Capacity<input type="number" min="1" max="1000000" required value={newSpace.capacity} onChange={(e) => setNewSpace({ ...newSpace, capacity: e.target.value })} /></label>
+                <div className="span-2"><button className="secondary-button" disabled={busy}>Add venue space</button></div>
+              </form>
+            </Panel>}
+            {isAdmin && <Panel title="Venue directory" subtitle="Enable or temporarily hide venues from public discovery">
+              {venues.map((venue) => <div className="portal-list-row" key={venue.id}><div><b>{venue.name}</b><small>{venue.city?.name || "City"} · {venue.address}</small></div><div className="portal-row-actions"><Status value={venue.is_active ? "active" : "disabled"} /><button className="secondary-button" onClick={() => toggleVenue(venue.id, venue.is_active)}>{venue.is_active ? "Disable" : "Enable"}</button></div></div>)}
+            </Panel>}}
           </div>}
 
           {section === "analytics" && (isOrganizer || isAdmin) && <Panel title="Sales analytics" subtitle="Confirmed bookings and gross demo sales by event">
