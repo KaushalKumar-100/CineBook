@@ -191,7 +191,7 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
           poster_url: eventForm.poster_url || null,
         }),
       });
-      await request(apiBase, token, "/manage/sessions", {
+      const session = await request(apiBase, token, "/manage/sessions", {
         method: "POST",
         body: JSON.stringify({
           event_id: created.id,
@@ -208,7 +208,7 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
         await request(apiBase, token, "/manage/ticket-types", {
           method: "POST",
           body: JSON.stringify({
-            session_id: created.id ? undefined : undefined,
+            session_id: session.id,
             name: "General Admission",
             description: "Standard admission",
             price: Number(eventForm.price),
@@ -416,7 +416,7 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
           </div>}
 
           {section === "checkin" && isAdmin && <Panel title="Ticket check-in" subtitle="Scan or enter a CineBook ticket code. Each ticket can be checked in only once.">
-            <form className="portal-inline-form" onSubmit={(event) => { event.preventDefault(); decide(`/portal/tickets/check-in?ticket_code=${encodeURIComponent(ticketCode)}`, {}, "Ticket checked in."); }}>
+            <form className="portal-inline-form" onSubmit={(event) => { event.preventDefault(); runAction(() => request(apiBase, token, "/portal/tickets/check-in", { method: "POST", body: JSON.stringify({ ticket_code: ticketCode }) }), "Ticket checked in."); }}>
               <input required minLength="12" value={ticketCode} onChange={(e) => setTicketCode(e.target.value)} placeholder="Ticket code" />
               <button className="primary-button" disabled={busy}>Validate & check in</button>
             </form>
