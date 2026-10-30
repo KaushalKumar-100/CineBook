@@ -113,9 +113,52 @@ function MovieCard({ item, onBook }) {
   );
 }
 
+function VenueBrowser({ apiBase, cityId, cityName, onChooseEvent }) {
+  const [query, setQuery] = useState("");
+  const [venues, setVenues] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [selectedVenue, setSelectedVenue] = useState(null);
+  const [venueEvents, setVenueEvents] = useState([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsError, setEventsError] = useState("");
+  useEffect(() => {
+    if (!cityId) { setVenues([]); return; }
+    const controller = new AbortController();
+    setLoading(true); setError("");
+    fetch(`${apiBase}/api/v1/venues?city_id=${encodeURIComponent(cityId)}`, { signal: controller.signal })
+      .then(async (response) => { const data = await response.json().catch(() => []); if (!response.ok) throw new Error(data.detail || "Could not load venues."); return data; })
+      .then((data) => setVenues(Array.isArray(data) ? data : []))
+      .catch((failure) => { if (failure.name !== "AbortError") setError(failure.message || "Could not load venues."); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [apiBase, cityId]);
+  useEffect(() => {
+    if (!selectedVenue) { setVenueEvents([]); return; }
+    const controller = new AbortController();
+    setEventsLoading(true); setEventsError("");
+    fetch(`${apiBase}/api/v1/venues/${selectedVenue.id}/events`, { signal: controller.signal })
+      .then(async (response) => { const data = await response.json().catch(() => []); if (!response.ok) throw new Error(data.detail || "Could not load venue events."); return data; })
+      .then((data) => setVenueEvents(Array.isArray(data) ? data : []))
+      .catch((failure) => { if (failure.name !== "AbortError") setEventsError(failure.message || "Could not load venue events."); })
+      .finally(() => { if (!controller.signal.aborted) setEventsLoading(false); });
+    return () => controller.abort();
+  }, [apiBase, selectedVenue]);
+  if (!cityId) return <section className="venue-discovery"><div className="section-header"><div><span className="mini-label">DISCOVER BY LOCATION</span><h2>Choose a <em>city first.</em></h2><p>Select a database location from the city selector above to explore registered venues.</p></div></div></section>;
+  return (
+    <section className="venue-discovery" id="venue-discovery">
+      <div className="section-header"><div><span className="mini-label">DISCOVER BY LOCATION</span><h2>{selectedVenue ? selectedVenue.name : `Venues in ${cityName}`} <em>{selectedVenue ? "events." : "await."}</em></h2><p>{selectedVenue ? selectedVenue.address : "Browse the venues registered in your selected city."}</p></div>
+      <label className="venue-search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter venues" aria-label="Filter venues" /></label></div>
+      {selectedVenue && <button className="text-button venue-back" onClick={() => setSelectedVenue(null)}>← Back to all venues</button>}
+      {!selectedVenue && (loading ? <div className="loading-state"><RefreshCw className="spin" size={22} /> Loading venues...</div> : error ? <div className="empty-state"><p>{error}</p></div> : <div className="venue-grid">{venues.filter((venue) => `${venue.name} ${venue.venue_type} ${venue.address}`.toLowerCase().includes(query.toLowerCase())).map((venue) => <button type="button" className="venue-card" key={venue.id} onClick={() => { setSelectedVenue(venue); setQuery(""); }}><div className="venue-card-mark"><MapPin size={24} /></div><div><span className="eyebrow">{String(venue.venue_type || "venue").replaceAll("_", " ")}</span><h3>{venue.name}</h3><p>{venue.address}</p><small>{venue.capacity || 0} capacity · {venue.spaces?.length || 0} spaces</small></div><ChevronRight size={19} /></button>)}{venues.length === 0 && <div className="empty-state"><h3>No registered venues in {cityName}</h3><p>Ask an administrator to add a venue and its seating spaces.</p></div>}</div>)}
+      {selectedVenue && (eventsLoading ? <div className="loading-state"><RefreshCw className="spin" size={22} /> Loading upcoming events...</div> : eventsError ? <div className="empty-state"><p>{eventsError}</p></div> : venueEvents.length ? <div className="event-grid">{venueEvents.map((eventItem) => <article className="event-card" key={eventItem.id}><div className="event-poster-wrap"><ImageOrFallback src={eventItem.poster_url} alt={eventItem.title} fallbackSrc={getCategoryPoster(eventItem)} className="event-poster" /></div><div className="event-card-body"><p className="eyebrow">{eventItem.category?.name || "Event"}</p><h3>{eventItem.title}</h3><p className="event-description">{eventItem.description || "Upcoming experience at this venue."}</p><div className="event-meta"><span><CalendarDays size={15} />{prettyDate(eventItem.starts_at)}</span><span>From ₹{Number(eventItem.starting_price || 0).toFixed(0)}</span></div><button className="text-button" onClick={() => onChooseEvent(eventItem)}>Explore showtimes <ChevronRight size={16} /></button></div></article>)}</div> : <div className="empty-state"><CalendarDays size={28} /><h3>No upcoming events at this venue</h3><p>Only events registered against {selectedVenue.name} are shown here.</p></div>)}
+    </section>
+  );
+}
 export default function App() {
   const [tab, setTab] = useState("events");
   const [city, setCity] = useState("All cities");
+  const [citySearch, setCitySearch] = useState("");
   const [search, setSearch] = useState("");
   const [eventType, setEventType] = useState("all");
   const [events, setEvents] = useState([]);
@@ -258,6 +301,7 @@ export default function App() {
   }, []);
 
   const cityId = cities.find((item) => item.name.toLowerCase() === city.toLowerCase())?.id;
+  const selectedCityId = cities.find((item) => item.name.toLowerCase() === city.toLowerCase())?.id;
   const visibleEvents = useMemo(() => {
     const items = events.filter((item) => {
       const matchesType = eventType === "all" || item.event_type === eventType;
@@ -419,13 +463,15 @@ export default function App() {
           <button onClick={() => { setEventType("local"); setTab("events"); setMobileMenu(false); }}>Local finds</button>
         </nav>
         <div className="top-actions">
-          <label className="city-select"><MapPin size={16} /><select value={city} onChange={(event) => setCity(event.target.value)} aria-label="Choose city"><option>All cities</option>{cities.map((item) => <option key={item.id}>{item.name}</option>)}{!cities.some((item) => item.name === "Guwahati") && <option>Guwahati</option>}{!cities.some((item) => item.name === "Tezpur") && <option>Tezpur</option>}</select></label>
+          <label className="city-select"><MapPin size={16} /><select value={city} onChange={(event) => { setCity(event.target.value); setCitySearch(""); }} aria-label="Choose city"><option>All cities</option>{cities.map((item) => <option key={item.id}>{item.name}</option>)}</select></label>
           {currentUser ? <button className="profile-button" onClick={() => setAccountOpen(true)}><CircleUserRound size={19} /><span>{currentUser.name?.split(" ")[0] || "Account"}</span></button> : <button className="profile-button" onClick={() => { setAuthMode("login"); setAuthError(""); setAuthOpen(true); }}><CircleUserRound size={19} /><span>Sign in</span></button>}
           <button className="icon-button mobile-menu-button" onClick={() => setMobileMenu((value) => !value)} aria-label="Toggle navigation">{mobileMenu ? <X /> : <Menu />}</button>
         </div>
       </header>
 
       <main>
+        <VenueBrowser apiBase={API_BASE} cityId={selectedCityId} cityName={city} onChooseEvent={(item) => bookItem({ ...item, event_type: "local" })} />
+
         <section className="hero">
           <div className="hero-glow glow-one"></div><div className="hero-glow glow-two"></div>
           <div className="hero-copy">
