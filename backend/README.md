@@ -19,7 +19,7 @@ Edit `backend/.env` locally. Set your MySQL user/password and replace `SECRET_KE
 
 Create the database by running `backend/sql/schema.sql` in MySQL Workbench (it creates `cinebook_db` and the current tables). For an existing CineBook database, first take a backup and then run `backend/sql/migrations/002_venue_booking_flow.sql` to add the venue/show booking fields and inventory tables without deleting demo data. The optional `backend/sql/seed_demo.sql` adds a small legacy starter dataset. For the complete sample catalogue and bookable demo inventory, use the interactive Python seeder below after configuring `.env`. On an existing database, apply migration `002_venue_booking_flow.sql` after taking a backup before running the seeder.
 
-Run the local-only demo seeder from `backend/` (it creates missing tables and prompts for an organizer email/password; no default credentials are stored in the project). It adds five movie listings, 60 cinema seats across Standard/Premium/Recliner price tiers, the Bhumika Marathi play at Vasantrao Deshpande Hall in Nagpur, Mumbai event samples including The Messi Experience, Papa Yaar by Zakir Khan, and CALVIN HARRIS, plus Delhi, Bengaluru, Hyderabad, Kolkata, and Pune in the city directory. The five new cities are directory entries only; venues and actual events must be supplied by verified imports or organizer/admin records. Seeded schedules, capacity, prices, tax and convenience fees are demo values:
+Run the local-only demo seeder from `backend/` (it creates missing tables and prompts for an organizer email/password; no default credentials are stored in the project). It adds five movie listings, 60 cinema seats across Standard/Premium/Recliner price tiers, the Bhumika Marathi play at Vasantrao Deshpande Hall in Nagpur, Mumbai event samples including The Messi Experience, Papa Yaar by Zakir Khan, and CALVIN HARRIS, plus a clearly disclosed Philharmonic demo-only checkout session for 21 Nov 2026 at 7:00 PM (General Admission ₹499 / Premium ₹799). The supplied concert poster says Event Closed; this seeded show is invented test inventory and is not a real event or valid admission. The seeder also adds Delhi, Bengaluru, Hyderabad, Kolkata, and Pune in the city directory. The five new cities are directory entries only; venues and actual events must be supplied by verified imports or organizer/admin records. Seeded schedules, capacity, prices, tax and convenience fees are demo values:
 
 ```powershell
 python -m scripts.seed_demo
@@ -72,12 +72,16 @@ For local coursework, missing tables are auto-created only when `APP_ENV=develop
 ### Booking (login required)
 - `POST /api/v1/bookings/holds`: request a temporary user-owned hold for 1-20 cinema seat IDs: `{"session_id":1,"seat_ids":[1,2]}`. Holds expire after `SEAT_HOLD_MINUTES` (default 8 minutes); requesting a new selection replaces that customer's previous hold for the same show.
 - `DELETE /api/v1/bookings/holds/{session_id}`: release the signed-in user's holds for that show.
-- `POST /api/v1/bookings`: assigned seats: `{"session_id":1,"seat_ids":[1,2],"payment_method":"demo_upi"}`; general admission: `{"session_id":2,"ticket_type_id":1,"quantity":2,"payment_method":"demo_card"}`. Assigned-seat bookings require unexpired holds owned by the requesting user. Payment method values are `demo_upi`, `demo_card`, or `demo_netbanking`.
+- `POST /api/v1/bookings`: assigned seats: `{"session_id":1,"seat_ids":[1,2],"payment_method":"demo_upi"}`; general admission: `{"session_id":2,"ticket_type_id":1,"quantity":2,"payment_method":"demo_card"}`. Assigned-seat bookings require unexpired holds owned by the requesting user. Payment method values are `demo_upi`, `demo_upi_qr`, `demo_card`, or `demo_netbanking`.
 - `GET /api/v1/bookings/me`
 - `GET /api/v1/bookings/{id}`
 - `GET /api/v1/bookings/{id}/ticket/qr`: owner/admin-only QR image response for confirmed bookings; the QR stores only the unguessable ticket code.
 - `GET /api/v1/bookings/{id}/payments`
 - `POST /api/v1/bookings/{id}/cancel`
+
+
+### Optional merchant UPI QR image
+Place your own legitimate merchant UPI QR image at `frontend/public/payment-qr.png`. When the customer selects "Scan UPI QR", the checkout displays that image. This static QR display is not payment verification: a customer can scan it externally, but CineBook cannot detect or verify a transfer. The primary action remains a clearly labelled simulated success/failure for local coursework testing. Do not use the demo flow to collect real payments.
 
 Payments/refunds are simulated for coursework. The checkout now opens the CineBook DemoPay test page with UPI/card/netbanking method selection, simulated success and decline actions, and no credential fields. On success the backend confirms the demo booking and issues a random ticket code; the QR endpoint renders that code as a PNG data URL for display/download. QR contents do not include customer or payment information. No real payment provider is connected and demo tickets are not valid for admission to real venues.
 
