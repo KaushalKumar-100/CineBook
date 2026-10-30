@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 350" role="img" aria-labelledby="title desc">
+<title id="title">Winter Concert — Delhi Chamber Choir</title>
+<desc id="desc">Archived winter concert poster featuring a choir on a warm wooden stage.</desc>
+<defs>
+ <linearGradient id="wood" x2="0" y2="1"><stop stop-color="#7e4c2b"/><stop offset=".45" stop-color="#c18a53"/><stop offset="1" stop-color="#301c16"/></linearGradient>
+ <radialGradient id="light"><stop stop-color="#ffe2ad" stop-opacity=".9"/><stop offset="1" stop-color="#ffd08a" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="700" height="350" fill="url(#wood)"/>
+<g opacity=".22" stroke="#f8d39a" stroke-width="3">
+ <path d="M65 0v350M125 0v350M185 0v350M245 0v350M305 0v350M365 0v350M425 0v350M485 0v350M545 0v350M605 0v350M665 0v350"/>
+</g>
+<ellipse cx="350" cy="125" rx="310" ry="180" fill="url(#light)"/>
+<path d="M25 35h650" stroke="#f0d3a5" stroke-opacity=".6"/>
+<text x="350" y="72" text-anchor="middle" fill="#fff3de" font-family="Georgia,serif" font-size="23" letter-spacing="3">DELHI CHAMBER CHOIR</text>
+<text x="350" y="101" text-anchor="middle" fill="#fae3c2" font-family="Georgia,serif" font-size="15" font-style="italic">presents</text>
+<g fill="#1b1718" stroke="#e7c99f" stroke-opacity=".4" stroke-width="1.5">
+ <g transform="translate(90 155)"><circle r="14" fill="#d3ad83"/><path d="M-21 19h42l9 70h-60z"/><path d="M-13 89h11v39h-11zM8 89h11v39H8z"/></g>
+ <g transform="translate(155 145)"><circle r="15" fill="#d3ad83"/><path d="M-23 20h46l9 79h-64z"/><path d="M-14 97h12v34h-12zM7 97h12v34H7z"/></g>
+ <g transform="translate(220 157)"><circle r="14" fill="#c89f78"/><path d="M-21 19h42l9 70h-60z"/><path d="M-13 89h11v39h-11zM8 89h11v39H8z"/></g>
+ <g transform="translate(285 145)"><circle r="15" fill="#d3ad83"/><path d="M-23 20h46l9 79h-64z"/><path d="M-14 97h12v34h-12zM7 97h12v34H7z"/></g>
+ <g transform="translate(350 154)"><circle r="15" fill="#c89f78"/><path d="M-24 20h48l9 78h-66z"/><path d="M-14 96h12v34h-12zM7 96h12v34H7z"/></g>
+ <g transform="translate(415 145)"><circle r="15" fill="#d3ad83"/><path d="M-23 20h46l9 79h-64z"/><path d="M-14 97h12v34h-12zM7 97h12v34H7z"/></g>
+ <g transform="translate(480 157)"><circle r="14" fill="#c89f78"/><path d="M-21 19h42l9 70h-60z"/><path d="M-13 89h11v39h-11zM8 89h11v39H8z"/></g>
+ <g transform="translate(545 145)"><circle r="15" fill="#d3ad83"/><path d="M-23 20h46l9 79h-64z"/><path d="M-14 97h12v34h-12zM7 97h12v34H7z"/></g>
+ <g transform="translate(610 155)"><circle r="14" fill="#c89f78"/><path d="M-21 19h42l9 70h-60z"/><path d="M-13 89h11v39h-11zM8 89h11v39H8z"/></g>
+</g>
+<path d="M65 280h570l-28 30H92z" fill="#201313" opacity=".9"/>
+<text x="350" y="218" text-anchor="middle" fill="#fff6e4" font-family="Georgia,serif" font-size="48" letter-spacing="3">WINTER CONCERT</text>
+<text x="350" y="247" text-anchor="middle" fill="#fff0d2" font-family="Georgia,serif" font-size="14" font-style="italic">Conductor · Nadezda Balyan</text>
+<text x="350" y="274" text-anchor="middle" fill="#f5d7ae" font-family="Arial,sans-serif" font-size="11">ENGLISH · LATIN · HINDI · WESTERN CLASSICAL</text>
+<text x="350" y="330" text-anchor="middle" fill="#f7d9af" font-family="Arial,sans-serif" font-size="10" letter-spacing="2">2025 · ARCHIVED POSTER · EVENT CLOSED</text>
+</svg>

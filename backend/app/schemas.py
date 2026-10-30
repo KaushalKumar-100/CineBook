@@ -1,5 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl
 
 class UserRegister(BaseModel):
@@ -69,6 +71,9 @@ class SessionCreate(BaseModel):
     starts_at: datetime
     ends_at: datetime
     base_price: Decimal = Field(ge=0, max_digits=10, decimal_places=2)
+    tax_percent: Decimal = Field(default=Decimal("0.00"), ge=0, le=100, max_digits=5, decimal_places=2)
+    convenience_fee: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=10, decimal_places=2)
+    booking_mode: Literal["assigned", "general_admission"] = "general_admission"
 
 class TicketTypeCreate(BaseModel):
     session_id: int
@@ -82,6 +87,20 @@ class BookingCreate(BaseModel):
     ticket_type_id: int | None = None
     quantity: int = Field(default=1, ge=1, le=20)
     seat_ids: list[int] | None = Field(default=None, max_length=20)
+    payment_method: Literal["demo_upi", "demo_upi_qr", "demo_card", "demo_netbanking"] = "demo_upi"
+
+class SeatHoldCreate(BaseModel):
+    session_id: int
+    seat_ids: list[int] = Field(min_length=1, max_length=20)
+
+class SeatCategoryPriceCreate(BaseModel):
+    seat_category: str = Field(min_length=1, max_length=40)
+    price: Decimal = Field(ge=0, max_digits=10, decimal_places=2)
+
+class PaymentVerify(BaseModel):
+    razorpay_order_id: str = Field(min_length=5, max_length=100)
+    razorpay_payment_id: str = Field(min_length=5, max_length=100)
+    razorpay_signature: str = Field(min_length=20, max_length=256)
 
 class BookingOut(BaseModel):
     id: int
@@ -89,6 +108,11 @@ class BookingOut(BaseModel):
     session_id: int
     status: str
     total_amount: Decimal
+    subtotal_amount: Decimal = Decimal("0.00")
+    tax_amount: Decimal = Decimal("0.00")
+    convenience_amount: Decimal = Decimal("0.00")
+    expires_at: datetime | None = None
+    ticket_code: str | None = None
     model_config = ConfigDict(from_attributes=True)
 
 class PaymentOut(BaseModel):
@@ -99,3 +123,83 @@ class PaymentOut(BaseModel):
     amount: Decimal
     status: str
     model_config = ConfigDict(from_attributes=True)
+
+
+class BookingQuote(BaseModel):
+    session_id: int
+    seat_lines: list[dict]
+    subtotal: Decimal
+    tax_percent: Decimal
+    tax_amount: Decimal
+    convenience_fee: Decimal
+    total_amount: Decimal
+
+
+
+class ProfileUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=100)
+    phone: str | None = Field(default=None, max_length=30)
+
+
+class OrganizerApplicationCreate(BaseModel):
+    organization_name: str = Field(min_length=2, max_length=200)
+    contact_phone: str = Field(min_length=6, max_length=30)
+    website: HttpUrl | None = None
+    description: str = Field(min_length=30, max_length=5000)
+
+
+class OrganizerApplicationDecision(BaseModel):
+    decision: Literal["approve", "reject"]
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str = Field(min_length=20, max_length=256)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class EventModerationDecision(BaseModel):
+    decision: Literal["approve", "reject"]
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class UserStatusUpdate(BaseModel):
+    is_active: bool
+
+
+class RefundRequestCreate(BaseModel):
+    reason: str = Field(min_length=10, max_length=1000)
+
+
+class RefundDecision(BaseModel):
+    decision: Literal["approve", "reject", "process"]
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class ReviewCreate(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str | None = Field(default=None, max_length=2000)
+    booking_id: int
+
+
+class DescriptionAssistInput(BaseModel):
+    title: str = Field(min_length=2, max_length=200)
+    category: str = Field(min_length=2, max_length=100)
+    city: str = Field(min_length=2, max_length=100)
+    venue: str | None = Field(default=None, max_length=200)
+    highlights: list[str] = Field(default_factory=list, max_length=12)
+    tone: Literal["professional", "energetic", "family_friendly", "premium"] = "professional"
+
+
+class TicketCheckIn(BaseModel):
+    ticket_code: str = Field(min_length=12, max_length=64)
+
+
+class MovieImportOptions(BaseModel):
+    tmdb_id: int
+    language: str = Field(default="hi", max_length=10)
+    import_poster: bool = True
