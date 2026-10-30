@@ -90,7 +90,7 @@ class BookingCreate(BaseModel):
 
 class SeatHoldCreate(BaseModel):
     session_id: int
-    seat_ids: list[int] = Field(min_length=1, max_length=10)
+    seat_ids: list[int] = Field(min_length=1, max_length=20)
 
 class SeatCategoryPriceCreate(BaseModel):
     seat_category: str = Field(min_length=1, max_length=40)
