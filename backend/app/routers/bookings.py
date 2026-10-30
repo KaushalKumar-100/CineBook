@@ -106,7 +106,7 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
         booking.ticket_code = ticket_code
         db.add(BookingTicket(booking_id=booking.id, ticket_code=ticket_code))
         # Demo-only payment confirmation. No card/UPI credentials are collected.
-        db.add(Payment(booking_id=booking.id, provider="demo", amount=grand_total, status="succeeded"))
+        db.add(Payment(booking_id=booking.id, provider=payload.payment_method, amount=grand_total, status="succeeded"))
         db.commit()
         db.refresh(booking)
         return booking
