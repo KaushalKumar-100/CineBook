@@ -96,6 +96,8 @@ class SessionEvent(Base):
     starts_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     ends_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     base_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    tax_percent: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("0.00"), nullable=False)
+    convenience_fee: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
     status: Mapped[str] = mapped_column(Enum("scheduled", "cancelled", "completed", name="session_status"), default="scheduled", nullable=False)
     event: Mapped[Event | None] = relationship(back_populates="sessions")
     movie: Mapped[Movie | None] = relationship()
@@ -109,6 +111,7 @@ class Seat(Base):
     row_label: Mapped[str] = mapped_column(String(10), nullable=False)
     seat_number: Mapped[int] = mapped_column(Integer, nullable=False)
     seat_type: Mapped[str] = mapped_column(Enum("standard", "premium", "recliner", name="seat_type"), default="standard", nullable=False)
+    seat_category: Mapped[str] = mapped_column(String(40), default="Standard", nullable=False)
 
 class TicketType(Base):
     __tablename__ = "ticket_types"
@@ -129,6 +132,11 @@ class Booking(TimestampMixin, Base):
     session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id", ondelete="RESTRICT"), nullable=False, index=True)
     status: Mapped[str] = mapped_column(Enum("pending", "confirmed", "cancelled", "expired", name="booking_status"), default="pending", nullable=False, index=True)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    subtotal_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
+    tax_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
+    convenience_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
+    ticket_code: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)
     user: Mapped[User] = relationship(back_populates="bookings")
     session: Mapped[SessionEvent] = relationship()
     items: Mapped[list["BookingItem"]] = relationship(back_populates="booking", cascade="all, delete-orphan")
@@ -161,3 +169,30 @@ class Payment(TimestampMixin, Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     status: Mapped[str] = mapped_column(Enum("initiated", "succeeded", "failed", "refunded", name="payment_status"), default="initiated", nullable=False)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class ShowSeatHold(Base):
+    """A temporary lock for one physical seat on one show.
+
+    The same seat can be used by other shows; the uniqueness is session-scoped.
+    """
+    __tablename__ = "show_seat_holds"
+    __table_args__ = (
+        UniqueConstraint("session_id", "seat_id", name="uq_show_seat_hold"),
+        Index("ix_show_seat_holds_expiry", "expires_at"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    seat_id: Mapped[int] = mapped_column(ForeignKey("seats.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+
+
+class BookingTicket(Base):
+    """QR-ticket token issued only after a booking is confirmed."""
+    __tablename__ = "booking_tickets"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    booking_id: Mapped[int] = mapped_column(ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    ticket_code: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    issued_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
