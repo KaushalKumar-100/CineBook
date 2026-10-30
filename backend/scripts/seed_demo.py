@@ -113,16 +113,28 @@ def ensure_movie(
 ) -> Movie:
     movie = db.scalar(select(Movie).where(Movie.title == title))
     if movie is None:
-        movie = Movie(title=title, is_active=True)
+        # Populate every required column before the first flush. Flushing a
+        # title-only Movie violates the NOT NULL constraint on duration_minutes.
+        movie = Movie(
+            title=title,
+            synopsis=synopsis,
+            language=language,
+            duration_minutes=duration_minutes,
+            release_date=release_date,
+            certificate=certificate,
+            poster_url=poster_url,
+            is_active=True,
+        )
         db.add(movie)
-        db.flush()
-    movie.synopsis = synopsis
-    movie.language = language
-    movie.duration_minutes = duration_minutes
-    movie.release_date = release_date
-    movie.certificate = certificate
-    movie.poster_url = poster_url
-    movie.is_active = True
+    else:
+        movie.synopsis = synopsis
+        movie.language = language
+        movie.duration_minutes = duration_minutes
+        movie.release_date = release_date
+        movie.certificate = certificate
+        movie.poster_url = poster_url
+        movie.is_active = True
+
     db.flush()
     return movie
 
