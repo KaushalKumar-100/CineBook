@@ -83,3 +83,15 @@ def test_demo_payment_methods_are_explicitly_limited():
         "demo_netbanking",
     ]
     assert properties["payment_method"]["default"] == "demo_upi"
+
+
+def test_authenticated_seat_hold_routes_are_registered():
+    paths = app.openapi()["paths"]
+    assert "post" in paths["/api/v1/bookings/holds"]
+    assert "delete" in paths["/api/v1/bookings/holds/{session_id}"]
+
+
+def test_seat_hold_request_schema_limits_selection_size():
+    from app.schemas import SeatHoldCreate
+
+    assert SeatHoldCreate.model_fields["seat_ids"].metadata
