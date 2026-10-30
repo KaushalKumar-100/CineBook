@@ -59,6 +59,7 @@ class Movie(TimestampMixin, Base):
     release_date: Mapped[datetime | None] = mapped_column(DateTime)
     certificate: Mapped[str | None] = mapped_column(String(20))
     poster_url: Mapped[str | None] = mapped_column(String(1000))
+    tmdb_id: Mapped[int | None] = mapped_column(Integer, unique=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
 class EventCategory(Base):
