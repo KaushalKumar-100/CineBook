@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 350" role="img" aria-labelledby="title desc">
+<title id="title">New Chamber St. Petersburg Philharmonic Orchestra</title>
+<desc id="desc">Archived Western classical concert poster preview featuring a conductor and orchestra.</desc>
+<defs>
+ <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#090a10"/><stop offset=".55" stop-color="#241514"/><stop offset="1" stop-color="#05060a"/></linearGradient>
+ <radialGradient id="spot"><stop stop-color="#e6ba83" stop-opacity=".75"/><stop offset="1" stop-color="#e6ba83" stop-opacity="0"/></radialGradient>
+ <linearGradient id="gold" x2="1" y2="1"><stop stop-color="#fff0c9"/><stop offset="1" stop-color="#bb8450"/></linearGradient>
+</defs>
+<rect width="700" height="350" fill="url(#bg)"/>
+<path d="M20 0h660L530 35H170z" fill="#3b151a" opacity=".8"/>
+<ellipse cx="190" cy="120" rx="160" ry="180" fill="url(#spot)"/>
+<ellipse cx="370" cy="110" rx="130" ry="150" fill="url(#spot)" opacity=".45"/>
+<path d="M85 0v95M150 0v80M550 0v80M620 0v100" stroke="#d5a971" stroke-opacity=".15" stroke-width="3"/>
+<g transform="translate(165 50)" fill="#090a0e" stroke="#d7c5a8" stroke-width="2">
+ <circle cx="0" cy="0" r="24" fill="#d3b28b" stroke="none"/>
+ <path d="M-35 31q35-20 70 0l18 106-34 18-7-68-8 106h-28l-5-106-9 66-31-15z"/>
+ <path d="M18 38l57-36 8 8-48 57M-16 43l-35 35 10 8 44-34" fill="none" stroke="#eadfc9" stroke-width="8"/>
+ <path d="M46-20l78-45" stroke="#f4e7d2" stroke-width="2"/>
+</g>
+<g fill="#d4c2a3" opacity=".8">
+ <circle cx="70" cy="278" r="9"/><circle cx="100" cy="270" r="9"/><circle cx="130" cy="278" r="9"/><circle cx="160" cy="268" r="9"/>
+ <circle cx="190" cy="279" r="9"/><circle cx="220" cy="268" r="9"/><circle cx="250" cy="278" r="9"/><circle cx="280" cy="269" r="9"/>
+ <circle cx="310" cy="280" r="9"/><circle cx="340" cy="269" r="9"/><circle cx="370" cy="279" r="9"/><circle cx="400" cy="268" r="9"/>
+ <circle cx="430" cy="279" r="9"/><circle cx="460" cy="269" r="9"/><circle cx="490" cy="280" r="9"/><circle cx="520" cy="269" r="9"/>
+ <circle cx="550" cy="278" r="9"/><circle cx="580" cy="269" r="9"/><circle cx="610" cy="278" r="9"/>
+</g>
+<g fill="#15131a" stroke="#d3c2a1" stroke-opacity=".65" stroke-width="2">
+ <path d="M45 300q10-35 25-35t25 35zM90 297q10-34 24-34t25 34zM140 300q10-35 25-35t25 35zM190 299q10-35 25-35t25 35zM240 300q10-35 25-35t25 35zM290 298q10-34 25-34t25 34zM340 300q10-35 25-35t25 35zM390 298q10-34 25-34t25 34zM440 300q10-35 25-35t25 35zM490 298q10-34 25-34t25 34zM540 300q10-35 25-35t25 35zM590 298q10-34 25-34t25 34z"/>
+</g>
+<text x="365" y="83" fill="url(#gold)" font-family="Georgia,serif" font-size="22" font-weight="bold">NEW CHAMBER</text>
+<text x="365" y="112" fill="url(#gold)" font-family="Georgia,serif" font-size="20" font-weight="bold">ST. PETERSBURG</text>
+<text x="365" y="141" fill="url(#gold)" font-family="Georgia,serif" font-size="19" font-weight="bold">PHILHARMONIC ORCHESTRA</text>
+<text x="365" y="175" fill="#e2c9a4" font-family="Arial,sans-serif" font-size="13">Yaroslav Zaboyarkin · conductor</text>
+<path d="M365 194h285" stroke="#b99063" opacity=".7"/>
+<text x="365" y="218" fill="#ddc6a3" font-family="Arial,sans-serif" font-size="11">BRITTEN · BORODIN · SHOSTAKOVICH</text>
+<text x="365" y="238" fill="#ddc6a3" font-family="Arial,sans-serif" font-size="11">VERDI-LOVREGLIO · TANEEV · TCHAIKOVSKY</text>
+<text x="365" y="290" fill="#b68a5a" font-family="Arial,sans-serif" font-size="10" letter-spacing="2">ARCHIVED POSTER · EVENT CLOSED</text>
+<text x="34" y="38" fill="#e3d6c1" font-family="Georgia,serif" font-size="22">NCPA</text>
+<text x="505" y="38" fill="#e3d6c1" font-family="Arial,sans-serif" font-size="17" font-weight="bold">Prithvi Theatre</text>
+</svg>
