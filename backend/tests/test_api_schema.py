@@ -95,3 +95,14 @@ def test_seat_hold_request_schema_limits_selection_size():
     seat_ids = app.openapi()["components"]["schemas"]["SeatHoldCreate"]["properties"]["seat_ids"]
     assert seat_ids["minItems"] == 1
     assert seat_ids["maxItems"] == 20
+
+
+def test_ticket_qr_endpoint_is_registered_and_returns_png_data_url():
+    from base64 import b64decode
+    from app.routers.bookings import build_ticket_qr_data_url
+
+    assert "/api/v1/bookings/{booking_id}/ticket/qr" in app.openapi()["paths"]
+    data_url = build_ticket_qr_data_url("CINEBOOK-TEST-TICKET-8X4K")
+    assert data_url.startswith("data:image/png;base64,")
+    image_bytes = b64decode(data_url.split(",", 1)[1])
+    assert image_bytes.startswith(b"\\x89PNG\\r\\n\\x1a\\n")
