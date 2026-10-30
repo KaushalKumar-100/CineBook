@@ -9,17 +9,18 @@ import {
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
 const demoMovies = [
-  { id: "dm1", title: "The Last Horizon", language: "English", duration_minutes: 128, synopsis: "An unforgettable journey beyond the edge of the known world.", poster_url: "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?auto=format&fit=crop&w=800&q=85", demo: true },
-  { id: "dm2", title: "Midnight in Mumbai", language: "Hindi", duration_minutes: 142, synopsis: "One city. One night. A thousand untold stories.", poster_url: "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=800&q=85", demo: true },
-  { id: "dm3", title: "Echoes of Tomorrow", language: "English", duration_minutes: 116, synopsis: "A scientist discovers that tomorrow is closer than it seems.", poster_url: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=85", demo: true },
-  { id: "dm4", title: "The Blue Hour", language: "Hindi", duration_minutes: 104, synopsis: "A small-town musician gets one chance to change everything.", poster_url: "https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=800&q=85", demo: true }
+  { id: "dm1", title: "Drishyam The Conclusion", language: "Hindi", duration_minutes: 150, certificate: "UA16+", synopsis: "The Salgaonkar family tries to protect the secret behind a past killing as new evidence and a determined Crime Branch officer threaten to reopen the case.", poster_url: "https://imgix.hoyts.com.au/mx/posters/au/drishyam-the-conclusion-3d42e8ed.jpg", release_date: "2026-10-02", demo: true },
+  { id: "dm2", title: "Prahaar", language: "Hindi", duration_minutes: 141, certificate: "UA16+", synopsis: "Inspired by public prosecutor Ujjwal Nikam, the courtroom drama follows the legal battle after the 26/11 Mumbai attacks and the pursuit of justice against all odds.", poster_url: "https://www.tribuneindia.com/sortd-service/imaginary/v22-01/jpg/large/high?url=dGhldHJpYnVuZS1zb3J0ZC1wcm8tcHJvZC1zb3J0ZC9tZWRpYTcwOTc4MjgwLTcwNzgtMTFmMS1hZmFlLTJkNzNlMTMwYzExYi5qcGc%3D", release_date: "2026-10-16", demo: true },
+  { id: "dm3", title: "Rajini: The Jailer 2", language: "Hindi", duration_minutes: 165, certificate: "UA16+", synopsis: "A retired jailer is pulled back into a dangerous underworld conflict when a new threat puts his family and the legacy he built at risk.", poster_url: "https://m.media-amazon.com/images/M/MV5BYmE0MTFjOTYtMWYxNC00YjFjLTlhNzYtMWQ5ZDEwNjRmYzE1XkEyXkFqcGc%40._V1_.jpg", release_date: "2026-10-15", demo: true },
+  { id: "dm4", title: "Nayyi Navelli", language: "Hindi", duration_minutes: 138, certificate: "UA16+", synopsis: "A picture-perfect bride brings unexpected joy to a chaotic Meerut household, until her brother-in-law begins to suspect that their blessing may be a witch in disguise.", poster_url: "https://m.media-amazon.com/images/M/MV5BZmJjYzUyMmYtNDgyNy00MzlkLWE1ZDAtZDFjNzgxYzQxOGY5XkEyXkFqcGc%40._V1_.jpg", release_date: "2026-10-16", demo: true },
+  { id: "dm5", title: "Namit Malhotra's Ramayana", language: "Hindi, Tamil, Telugu, Kannada", duration_minutes: 195, certificate: "U", synopsis: "The timeless story of Rama and Ravana returns as a large-scale cinematic retelling, following the epic conflict that has shaped generations.", poster_url: "https://cf-img-a-in.tosshub.com/sites/visualstory/wp/2025/07/ramayanaITG-1751608352043.jpeg?size=%2A%3A900", release_date: "2026-11-05", demo: true }
 ];
 
 const demoEvents = [
-  { id: "de1", title: "Guwahati Riverfront Music Fest", event_type: "major", city: { name: "Guwahati" }, venue: { name: "Brahmaputra Riverside Grounds" }, category: { name: "Concert" }, starts_at: "2026-12-12T17:30:00", poster_url: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=900&q=85", description: "An open-air night of live music on the Brahmaputra.", demo: true },
-  { id: "de2", title: "Campus Creators Day", event_type: "local", city: { name: "Tezpur" }, venue: { name: "University Auditorium" }, category: { name: "College Fest" }, starts_at: "2026-11-18T10:00:00", poster_url: "https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=900&q=85", description: "Student showcases, clubs, workshops, and performances.", demo: true },
-  { id: "de3", title: "Stand-up by the River", event_type: "local", city: { name: "Guwahati" }, venue: { name: "The Laugh Room" }, category: { name: "Comedy" }, starts_at: "2026-11-21T19:00:00", poster_url: "https://images.unsplash.com/photo-1585699324551-f6c309eedeca?auto=format&fit=crop&w=900&q=85", description: "A local comedy line-up for your weekend plans.", demo: true },
-  { id: "de4", title: "Build with AI: Weekend Workshop", event_type: "local", city: { name: "Guwahati" }, venue: { name: "Innovation Studio" }, category: { name: "Workshop" }, starts_at: "2026-11-28T11:00:00", poster_url: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=85", description: "A practical, beginner-friendly build day for curious minds.", demo: true }
+  { id: "de1", title: "Bhumika", event_type: "local", city: { name: "Nagpur" }, venue: { name: "Vasantrao Deshpande Hall" }, category: { name: "Theatre" }, starts_at: "2026-11-09T11:00:00", poster_url: "https://in.bmscdn.com/events/moviecard/ET00437976.jpg", description: "Marathi drama, approximately 2 hours 10 minutes. Actor Vivek Jayant, played by Sachin Khedekar, encounters a dream role that challenges his core and begins to transform him as he inhabits the character. Age guidance: 5 years and above.", starting_price: 300, demo: true },
+  { id: "de2", title: "The Messi Experience: A Dream Come True", event_type: "major", city: { name: "Mumbai" }, venue: { name: "Century Mills, Lower Parel" }, category: { name: "Experiences" }, starts_at: "2026-11-07T10:00:00", poster_url: "/posters/experience.svg", description: "An immersive football experience celebrating Lionel Messi's career through interactive exhibits and fan-focused installations.", starting_price: 999, demo: true },
+  { id: "de3", title: "Papa Yaar by Zakir Khan", event_type: "major", city: { name: "Mumbai" }, venue: { name: "DOME, SVP Stadium" }, category: { name: "Comedy Shows" }, starts_at: "2026-11-14T20:00:00", poster_url: "/posters/comedy.svg", description: "A live stand-up evening built around observational humour, family stories and everyday relationships.", starting_price: 1299, demo: true },
+  { id: "de4", title: "CALVIN HARRIS - Live in Mumbai", event_type: "major", city: { name: "Mumbai" }, venue: { name: "Infinity Bay, Sewri" }, category: { name: "Music Shows" }, starts_at: "2026-12-12T18:30:00", poster_url: "/posters/concert.svg", description: "A large-scale electronic music night featuring DJ and producer Calvin Harris in Mumbai.", starting_price: 3500, demo: true }
 ];
 
 const categories = [
@@ -176,6 +177,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState("login");
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
+  const [authPhone, setAuthPhone] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState("");
@@ -188,6 +190,9 @@ export default function App() {
   const [bookingQuantity, setBookingQuantity] = useState(1);
   const [bookingBusy, setBookingBusy] = useState(false);
   const [bookingError, setBookingError] = useState("");
+  const [bookingStep, setBookingStep] = useState("select");
+  const [bookingResult, setBookingResult] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState("demo_upi");
   const [accountOpen, setAccountOpen] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
@@ -332,6 +337,9 @@ export default function App() {
     setSelectedSeats([]);
     setSelectedTicketTypeId("");
     setBookingQuantity(1);
+    setBookingStep("select");
+    setBookingResult(null);
+    setPaymentMethod("demo_upi");
     if (item.demo) return;
     try {
       const isEvent = item.event_type === "local" || item.event_type === "major";
@@ -356,7 +364,7 @@ export default function App() {
         const registerResponse = await fetch(`${API_BASE}/api/v1/auth/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: authName, email: authEmail, password: authPassword }),
+          body: JSON.stringify({ name: authName, email: authEmail, password: authPassword, phone: authPhone || null }),
         });
         if (!registerResponse.ok) {
           const body = await registerResponse.json().catch(() => ({}));
@@ -404,6 +412,31 @@ export default function App() {
     }
   }
 
+  function continueToCheckout() {
+    if (!token) {
+      setAuthError("");
+      setAuthMode("login");
+      setAuthOpen(true);
+      setNotice("Sign in to continue to checkout.");
+      return;
+    }
+    if (!selectedSessionId || !sessionAvailability) {
+      setBookingError("Choose an available session first.");
+      return;
+    }
+    const seatsMode = sessionAvailability.booking_mode === "seats";
+    if (seatsMode && selectedSeats.length === 0) {
+      setBookingError("Select at least one available seat.");
+      return;
+    }
+    if (!seatsMode && !selectedTicketTypeId) {
+      setBookingError("Choose a ticket category.");
+      return;
+    }
+    setBookingError("");
+    setBookingStep("checkout");
+  }
+
   async function submitBooking() {
     if (!token) {
       setAuthError("");
@@ -429,8 +462,8 @@ export default function App() {
       return;
     }
     const payload = isSeats
-      ? { session_id: Number(selectedSessionId), seat_ids: selectedSeats }
-      : { session_id: Number(selectedSessionId), ticket_type_id: Number(selectedTicketTypeId), quantity: Number(bookingQuantity) };
+      ? { session_id: Number(selectedSessionId), seat_ids: selectedSeats, payment_method: paymentMethod }
+      : { session_id: Number(selectedSessionId), ticket_type_id: Number(selectedTicketTypeId), quantity: Number(bookingQuantity), payment_method: paymentMethod };
     setBookingBusy(true);
     setBookingError("");
     try {
@@ -441,14 +474,27 @@ export default function App() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.detail || "Booking failed. Please check availability and retry.");
-      setSelected(null);
-      setNotice(`Booking ${data.booking_reference} confirmed · ₹${Number(data.total_amount).toFixed(2)} (demo payment)`);
+      setBookingResult(data);
+      setBookingStep("confirmed");
+      setBookings((current) => [data, ...current.filter((booking) => booking.id !== data.id)]);
+      setNotice(`Booking ${data.booking_reference} confirmed. Demo payment only; no money was charged.`);
     } catch (error) {
       setBookingError(error.message || "Booking failed.");
     } finally {
       setBookingBusy(false);
     }
   }
+
+  const selectedSeatRows = (sessionAvailability?.seats || []).filter((seat) => selectedSeats.includes(seat.id));
+  const selectedTicket = (sessionAvailability?.ticket_types || []).find((ticket) => String(ticket.id) === selectedTicketTypeId);
+  const bookingSubtotal = sessionAvailability?.booking_mode === "seats"
+    ? selectedSeatRows.reduce((sum, seat) => sum + Number(seat.price ?? sessionAvailability.base_price ?? 0), 0)
+    : selectedTicket ? Number(selectedTicket.price) * Number(bookingQuantity) : 0;
+  const bookingTaxPercent = Number(sessionAvailability?.tax_percent || 0);
+  const bookingTax = Number((bookingSubtotal * bookingTaxPercent / 100).toFixed(2));
+  const bookingConvenience = bookingSubtotal > 0 ? Number(sessionAvailability?.convenience_fee || 0) : 0;
+  const bookingGrandTotal = bookingSubtotal + bookingTax + bookingConvenience;
+  const activeSession = availableSessions.find((session) => String(session.id) === String(selectedSessionId));
 
   return (
     <div className="app-shell">
@@ -530,25 +576,137 @@ export default function App() {
 
       {accountOpen && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setAccountOpen(false); }}><div className="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-title"><button className="icon-button modal-close" onClick={() => setAccountOpen(false)} aria-label="Close"><X /></button><span className="mini-label">YOUR CINEBOOK</span><h2 id="account-title">Your bookings.</h2><p className="account-email">Signed in as {currentUser?.email}</p>{bookingsError && <p className="form-error" role="alert">{bookingsError}</p>}{bookingsLoading ? <p className="booking-hint">Loading your booking history…</p> : bookings.length ? <div className="booking-list">{bookings.map((booking) => <article className="booking-record" key={booking.id}><div><span className="booking-reference">{booking.booking_reference}</span><span className={`booking-status status-${booking.status}`}>{booking.status}</span></div><p>Session #{booking.session_id} · ₹{Number(booking.total_amount).toFixed(2)}</p><small>Booking ID {booking.id}</small>{booking.status === "confirmed" && <button className="cancel-booking" disabled={cancellingBookingId === booking.id} onClick={() => cancelBooking(booking.id)}>{cancellingBookingId === booking.id ? "Cancelling…" : "Cancel booking"}</button>}</article>)}</div> : <div className="empty-bookings"><Ticket size={27} /><p>No bookings yet. Find a movie or event and book your first experience.</p></div>}<div className="account-actions"><button className="secondary-button" onClick={() => { setAccountOpen(false); setToken(""); setCurrentUser(null); setNotice("You have signed out."); }}>Sign out</button><button className="primary-button" onClick={() => setAccountOpen(false)}>Done</button></div></div></div>}
 
-      {authOpen && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setAuthOpen(false); }}><div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><button className="icon-button modal-close" onClick={() => setAuthOpen(false)} aria-label="Close"><X /></button><span className="mini-label">WELCOME TO CINEBOOK</span><h2 id="auth-title">{authMode === "login" ? "Good to see you." : "Create your account."}</h2><p className="auth-subtitle">{authMode === "login" ? "Sign in to save your plans and book tickets." : "Join CineBook and discover things happening around you."}</p><form className="auth-form" onSubmit={submitAuth}>{authMode === "register" && <label>Full name<input value={authName} onChange={(event) => setAuthName(event.target.value)} minLength={2} required autoComplete="name" /></label>}<label>Email address<input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} required autoComplete="email" /></label><label>Password<input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} minLength={8} required autoComplete={authMode === "login" ? "current-password" : "new-password"} /></label>{authError && <p className="form-error" role="alert">{authError}</p>}<button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? "Please wait..." : authMode === "login" ? "Sign in" : "Create account"}</button></form><p className="auth-switch">{authMode === "login" ? "New to CineBook?" : "Already have an account?"} <button onClick={() => { setAuthMode(authMode === "login" ? "register" : "login"); setAuthError(""); }}> {authMode === "login" ? "Create account" : "Sign in"}</button></p></div></div>}
+      {authOpen && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setAuthOpen(false); }}><div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><button className="icon-button modal-close" onClick={() => setAuthOpen(false)} aria-label="Close"><X /></button><span className="mini-label">WELCOME TO CINEBOOK</span><h2 id="auth-title">{authMode === "login" ? "Good to see you." : "Create your account."}</h2><p className="auth-subtitle">{authMode === "login" ? "Sign in to save your plans and book tickets." : "Join CineBook and discover things happening around you."}</p><form className="auth-form" onSubmit={submitAuth}>{authMode === "register" && <><label>Full name<input value={authName} onChange={(event) => setAuthName(event.target.value)} minLength={2} required autoComplete="name" /></label><label>Phone number <span className="field-optional">optional</span><input type="tel" value={authPhone} onChange={(event) => setAuthPhone(event.target.value)} maxLength={30} autoComplete="tel" /></label></>}<label>Email address<input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} required autoComplete="email" /></label><label>Password<input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} minLength={8} required autoComplete={authMode === "login" ? "current-password" : "new-password"} /></label>{authError && <p className="form-error" role="alert">{authError}</p>}<button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? "Please wait..." : authMode === "login" ? "Sign in" : "Create account"}</button></form><p className="auth-switch">{authMode === "login" ? "New to CineBook?" : "Already have an account?"} <button onClick={() => { setAuthMode(authMode === "login" ? "register" : "login"); setAuthError(""); }}> {authMode === "login" ? "Create account" : "Sign in"}</button></p></div></div>}
 
-      {selected && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><div className="detail-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button className="icon-button modal-close" onClick={() => setSelected(null)} aria-label="Close"><X /></button><ImageOrFallback src={selected.poster_url} fallbackSrc={getCategoryPoster(selected)} alt={selected.title} className="modal-poster" /><div className="modal-content"><span className="mini-label">{selected.demo ? "PREVIEW LISTING" : selected.language || selected.category?.name || "CINEBOOK"}</span><h2 id="modal-title">{selected.title}</h2><p>{selected.description || selected.synopsis || "Explore the details and upcoming sessions for this listing."}</p>{selected.event_type && <div className="modal-fact"><MapPin size={16} />{selected.venue?.name || "Venue details"} · {selected.city?.name || "City details"}</div>}
+      {selected && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget && bookingStep !== "confirmed") setSelected(null); }}>
+        <div className={`detail-modal booking-modal ${bookingStep === "confirmed" ? "ticket-confirmed-modal" : ""}`} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+          <button className="icon-button modal-close" onClick={() => setSelected(null)} aria-label="Close"><X /></button>
+          <ImageOrFallback src={selected.poster_url} fallbackSrc={getCategoryPoster(selected)} alt={selected.title} className="modal-poster" />
+          <div className="modal-content">
+            <span className="mini-label">{selected.demo ? "SAMPLE PREVIEW" : selected.language || selected.category?.name || "CINEBOOK"}</span>
+            <h2 id="modal-title">{selected.title}</h2>
+            <p>{selected.description || selected.synopsis || "Explore the details and upcoming sessions for this listing."}</p>
+            {selected.event_type && <div className="modal-fact"><MapPin size={16} />{selected.venue?.name || "Venue details"} · {selected.city?.name || "City details"}</div>}
 
-        {selected.demo ? <div className="preview-note"><Sparkles size={17} /><span>This is sample preview content. Add a real listing and sessions to enable live availability and booking.</span></div> : <>
-          <label className="booking-label">Choose a session
-            <select value={selectedSessionId} onChange={(event) => setSelectedSessionId(event.target.value)}>
-              <option value="">Select session</option>
-              {availableSessions.map((item) => <option key={item.id} value={item.id}>{prettyDate(item.starts_at)} · {prettyTime(item.starts_at)} · ₹{Number(item.base_price).toFixed(2)}</option>)}
-            </select>
-          </label>
-          {availabilityLoading && <p className="booking-hint">Checking availability…</p>}
-          {sessionAvailability && sessionAvailability.booking_mode === "seats" && <div className="seat-picker"><div className="screen-label">SCREEN</div><div className="seat-grid">{sessionAvailability.seats.map((seat) => <button type="button" key={seat.id} title={`Row ${seat.row_label}, seat ${seat.seat_number}`} disabled={!seat.available} className={`seat ${seat.available ? "" : "unavailable"} ${selectedSeats.includes(seat.id) ? "chosen" : ""}`} onClick={() => setSelectedSeats((current) => current.includes(seat.id) ? current.filter((id) => id !== seat.id) : [...current, seat.id])}>{seat.row_label}{seat.seat_number}</button>)}</div><p className="booking-hint">{selectedSeats.length} seat(s) selected · ₹{(selectedSeats.length * Number(sessionAvailability.base_price)).toFixed(2)}</p></div>}
-          {sessionAvailability && sessionAvailability.booking_mode === "general_admission" && <div className="ticket-picker"><label className="booking-label">Ticket category<select value={selectedTicketTypeId} onChange={(event) => setSelectedTicketTypeId(event.target.value)}><option value="">Choose ticket type</option>{sessionAvailability.ticket_types.map((ticket) => <option key={ticket.id} value={ticket.id} disabled={ticket.remaining < 1}>{ticket.name} · ₹{Number(ticket.price).toFixed(2)} · {ticket.remaining} left</option>)}</select></label><label className="booking-label">Quantity<select value={bookingQuantity} onChange={(event) => setBookingQuantity(Number(event.target.value))}>{Array.from({length: 10}, (_, index) => index + 1).map((amount) => <option key={amount} value={amount}>{amount}</option>)}</select></label>{sessionAvailability.ticket_types.find((ticket) => String(ticket.id) === selectedTicketTypeId) && <p className="booking-hint">Estimated total: ₹{(Number(sessionAvailability.ticket_types.find((ticket) => String(ticket.id) === selectedTicketTypeId).price) * bookingQuantity).toFixed(2)}</p>}</div>}
-          {bookingError && <p className="form-error" role="alert">{bookingError}</p>}
-          <div className="modal-actions"><button className="primary-button" disabled={bookingBusy || availabilityLoading || !sessionAvailability} onClick={submitBooking}><Ticket size={17} />{bookingBusy ? "Booking…" : token ? "Confirm booking" : "Sign in to book"}</button><button className="secondary-button" onClick={() => { toggleSaved(selected.id); setNotice(saved.includes(selected.id) ? "Removed from saved listings." : "Saved for later."); }}><Heart size={16} /> Save</button></div>
-          <p className="demo-payment-note">Academic demo checkout · Payments are simulated; no card details are collected.</p>
-        </>}
-      </div></div></div>}
+            {selected.demo ? <div className="preview-note"><Sparkles size={17} /><span>Sample catalogue preview. Run the backend demo seeder to create bookable sessions, live seat inventory and checkout pricing for this listing. Preview-only cards cannot take bookings.</span></div> : <>
+              <div className="booking-stepper" aria-label="Booking progress">
+                <span className={bookingStep === "select" ? "active" : bookingStep !== "select" ? "done" : ""}>1 <b>Show & seats</b></span>
+                <i />
+                <span className={bookingStep === "checkout" ? "active" : bookingStep === "confirmed" ? "done" : ""}>2 <b>Checkout</b></span>
+                <i />
+                <span className={bookingStep === "confirmed" ? "active" : ""}>3 <b>Ticket</b></span>
+              </div>
+
+              {bookingStep === "select" && <>
+                <label className="booking-label">Choose date and showtime
+                  <select value={selectedSessionId} onChange={(event) => setSelectedSessionId(event.target.value)}>
+                    <option value="">Select session</option>
+                    {availableSessions.map((item) => <option key={item.id} value={item.id}>{prettyDate(item.starts_at)} · {prettyTime(item.starts_at)} · From ₹{Number(item.base_price).toFixed(0)}</option>)}
+                  </select>
+                </label>
+                {activeSession && <p className="booking-hint session-location"><MapPin size={14} />{activeSession.venue?.name || selected.venue?.name || "Venue / screen details"} {activeSession.venue_space?.name ? `· ${activeSession.venue_space.name}` : ""}</p>}
+                {availabilityLoading && <p className="booking-hint">Checking seats and ticket availability…</p>}
+
+                {sessionAvailability && sessionAvailability.booking_mode === "seats" && <>
+                  <div className="seat-picker">
+                    <div className="screen-label">SCREEN</div>
+                    <div className="seat-legend">
+                      <span><i className="legend-seat available" />Available</span>
+                      <span><i className="legend-seat chosen" />Selected</span>
+                      <span><i className="legend-seat unavailable" />Booked</span>
+                    </div>
+                    <div className="seat-grid">{sessionAvailability.seats.map((seat) => <button type="button" key={seat.id} title={`Row ${seat.row_label}, seat ${seat.seat_number} · ₹${Number(seat.price ?? sessionAvailability.base_price).toFixed(0)}`} disabled={!seat.available} className={`seat ${seat.available ? "" : "unavailable"} ${selectedSeats.includes(seat.id) ? "chosen" : ""} seat-${String(seat.seat_category || "standard").toLowerCase()}`} onClick={() => setSelectedSeats((current) => current.includes(seat.id) ? current.filter((id) => id !== seat.id) : [...current, seat.id])}>{seat.row_label}{seat.seat_number}</button>)}</div>
+                    <p className="booking-hint">{selectedSeats.length} seat(s) selected · ₹{bookingSubtotal.toFixed(2)} subtotal</p>
+                    {selectedSeatRows.length > 0 && <div className="selected-seat-chips">{selectedSeatRows.map((seat) => <span key={seat.id}>{seat.row_label}{seat.seat_number} · ₹{Number(seat.price ?? sessionAvailability.base_price).toFixed(0)}</span>)}</div>}
+                  </div>
+                </>}
+
+                {sessionAvailability && sessionAvailability.booking_mode === "general_admission" && <div className="ticket-picker">
+                  <label className="booking-label">Ticket category
+                    <select value={selectedTicketTypeId} onChange={(event) => setSelectedTicketTypeId(event.target.value)}>
+                      <option value="">Choose ticket type</option>
+                      {sessionAvailability.ticket_types.map((ticket) => <option key={ticket.id} value={ticket.id} disabled={ticket.remaining < 1}>{ticket.name} · ₹{Number(ticket.price).toFixed(0)} · {ticket.remaining} left</option>)}
+                    </select>
+                  </label>
+                  <label className="booking-label">Number of tickets
+                    <select value={bookingQuantity} onChange={(event) => setBookingQuantity(Number(event.target.value))}>
+                      {Array.from({ length: Math.min(10, selectedTicket?.remaining || 10) }, (_, index) => index + 1).map((amount) => <option key={amount} value={amount}>{amount}</option>)}
+                    </select>
+                  </label>
+                </div>}
+
+                {sessionAvailability && <div className="price-breakdown">
+                  <div><span>Ticket subtotal</span><b>₹{bookingSubtotal.toFixed(2)}</b></div>
+                  <div><span>Taxes {bookingTaxPercent ? `(${bookingTaxPercent}%)` : ""}</span><b>₹{bookingTax.toFixed(2)}</b></div>
+                  <div><span>Convenience fee</span><b>₹{bookingConvenience.toFixed(2)}</b></div>
+                  <div className="price-total"><span>Payable total</span><b>₹{bookingGrandTotal.toFixed(2)}</b></div>
+                </div>}
+                {bookingError && <p className="form-error" role="alert">{bookingError}</p>}
+                <div className="modal-actions">
+                  <button className="primary-button" disabled={availabilityLoading || !sessionAvailability || bookingSubtotal <= 0} onClick={continueToCheckout}>Continue to checkout <ChevronRight size={17} /></button>
+                  <button className="secondary-button" onClick={() => { toggleSaved(selected.id); setNotice(saved.includes(selected.id) ? "Removed from saved listings." : "Saved for later."); }}><Heart size={16} /> Save</button>
+                </div>
+                <p className="demo-payment-note">Preview inventory and prices are seeded for this academic demo. Availability is not a live venue feed.</p>
+              </>}
+
+              {bookingStep === "checkout" && <div className="checkout-panel">
+                <h3>Complete your booking</h3>
+                <p className="booking-hint">Review the details before confirming this simulated payment.</p>
+                <div className="checkout-recap">
+                  <div><span>Experience</span><b>{selected.title}</b></div>
+                  <div><span>Show</span><b>{activeSession ? `${prettyDate(activeSession.starts_at)} · ${prettyTime(activeSession.starts_at)}` : `Session #${selectedSessionId}`}</b></div>
+                  <div><span>Venue</span><b>{selected.venue?.name || "Venue details"}</b></div>
+                  <div><span>Tickets</span><b>{sessionAvailability?.booking_mode === "seats" ? selectedSeatRows.map((seat) => `${seat.row_label}${seat.seat_number}`).join(", ") : `${bookingQuantity} × ${selectedTicket?.name || "Ticket"}`}</b></div>
+                  <div><span>Booking under</span><b>{currentUser?.name || currentUser?.email}</b></div>
+                  <div><span>Contact email</span><b>{currentUser?.email}</b></div>
+                  {currentUser?.phone && <div><span>Phone</span><b>{currentUser.phone}</b></div>}
+                </div>
+                <h4>Choose a demo payment method</h4>
+                <div className="payment-methods">
+                  {[
+                    ["demo_upi", "UPI", "Simulated UPI approval"],
+                    ["demo_card", "Card", "No card number required"],
+                    ["demo_netbanking", "Netbanking", "Simulated bank redirect"],
+                  ].map(([value, label, detail]) => <button type="button" key={value} className={paymentMethod === value ? "payment-method selected" : "payment-method"} onClick={() => setPaymentMethod(value)}><span className="payment-radio">{paymentMethod === value ? "●" : ""}</span><span><b>{label}</b><small>{detail}</small></span></button>)}
+                </div>
+                <div className="price-breakdown">
+                  <div><span>Ticket subtotal</span><b>₹{bookingSubtotal.toFixed(2)}</b></div>
+                  <div><span>Taxes</span><b>₹{bookingTax.toFixed(2)}</b></div>
+                  <div><span>Convenience fee</span><b>₹{bookingConvenience.toFixed(2)}</b></div>
+                  <div className="price-total"><span>Total to pay</span><b>₹{bookingGrandTotal.toFixed(2)}</b></div>
+                </div>
+                {bookingError && <p className="form-error" role="alert">{bookingError}</p>}
+                <div className="demo-safe-note"><span>DEMO CHECKOUT</span><p>No real payment is processed. Do not enter bank, card, CVV, UPI PIN or OTP details.</p></div>
+                <div className="modal-actions">
+                  <button className="secondary-button" onClick={() => setBookingStep("select")}>← Back to seats</button>
+                  <button className="primary-button" disabled={bookingBusy} onClick={submitBooking}>{bookingBusy ? "Processing demo payment…" : `Pay ₹${bookingGrandTotal.toFixed(2)} (Demo)`}</button>
+                </div>
+              </div>}
+
+              {bookingStep === "confirmed" && bookingResult && <div className="ticket-confirmation" id="printable-ticket">
+                <div className="ticket-success-mark">✓</div>
+                <span className="mini-label">CINEBOOK E-TICKET</span>
+                <h3>Booking confirmed!</h3>
+                <p>Your demo ticket has been issued. Keep this code for check-in simulation.</p>
+                <div className="issued-ticket-code">{bookingResult.ticket_code || bookingResult.booking_reference}</div>
+                <div className="checkout-recap">
+                  <div><span>Booking reference</span><b>{bookingResult.booking_reference}</b></div>
+                  <div><span>Experience</span><b>{selected.title}</b></div>
+                  <div><span>Show</span><b>{activeSession ? `${prettyDate(activeSession.starts_at)} · ${prettyTime(activeSession.starts_at)}` : `Session #${bookingResult.session_id}`}</b></div>
+                  <div><span>Tickets / seats</span><b>{sessionAvailability?.booking_mode === "seats" ? selectedSeatRows.map((seat) => `${seat.row_label}${seat.seat_number}`).join(", ") : `${bookingQuantity} × ${selectedTicket?.name || "Ticket"}`}</b></div>
+                  <div><span>Total paid (simulation)</span><b>₹{Number(bookingResult.total_amount).toFixed(2)}</b></div>
+                  <div><span>Payment status</span><b className="payment-approved">Demo payment successful</b></div>
+                </div>
+                <div className="demo-safe-note"><span>NO MONEY CHARGED</span><p>This is a simulated ticket for your CineBook project. It is not valid for entry to the real venue.</p></div>
+                <div className="modal-actions">
+                  <button className="secondary-button" onClick={() => window.print()}>Print ticket</button>
+                  <button className="primary-button" onClick={() => { setSelected(null); setBookingStep("select"); setBookingResult(null); }}>Back to discovery</button>
+                </div>
+              </div>}
+            </>}
+          </div>
+        </div>
+      </div>}
     </div>
   );
 }
