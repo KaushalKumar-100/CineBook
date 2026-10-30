@@ -23,6 +23,20 @@ class Settings(BaseSettings):
     razorpay_key_secret: str = ""
     razorpay_webhook_secret: str = ""
     seat_hold_minutes: int = 8
+    tmdb_read_access_token: str = ""
+    tmdb_api_key: str = ""
+    ticketmaster_api_key: str = ""
+    allevents_api_key: str = ""
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4.1-mini"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_use_tls: bool = True
+    public_api_url: str = "http://127.0.0.1:8000"
+    rate_limit_per_minute: int = 120
 
     model_config = SettingsConfigDict(
         env_file=".env",
