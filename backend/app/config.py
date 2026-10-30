@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     db_echo: bool = False
     demo_mode: bool = True
     cors_allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173"
+    razorpay_key_id: str = ""
+    razorpay_key_secret: str = ""
+    razorpay_webhook_secret: str = ""
+    seat_hold_minutes: int = 8
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -37,6 +41,8 @@ class Settings(BaseSettings):
                 raise ValueError("Set CORS_ALLOWED_ORIGINS to the deployed frontend origin.")
             if "*" in [origin.strip() for origin in self.cors_allowed_origins.split(",")]:
                 raise ValueError("Wildcard CORS origins are not allowed in production.")
+            if not (self.razorpay_key_id and self.razorpay_key_secret and self.razorpay_webhook_secret):
+                raise ValueError("Configure Razorpay API and webhook secrets before enabling live payments.")
         return self
 
 
