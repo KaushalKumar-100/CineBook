@@ -1,17 +1,154 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from secrets import token_urlsafe
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 
+from app.config import get_settings
 from app.dependencies import DbSession, get_current_user
-from app.models import Booking, BookingItem, BookingTicket, Event, Movie, Payment, Seat, SessionEvent, TicketType, User, VenueSpace
-from app.schemas import BookingCreate, BookingOut, PaymentOut
+from app.models import Booking, BookingItem, BookingTicket, Event, Movie, Payment, Seat, SessionEvent, ShowSeatHold, TicketType, User, VenueSpace
+from app.schemas import BookingCreate, BookingOut, PaymentOut, SeatHoldCreate
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
+settings = get_settings()
+
+
+
+
+@router.post("/holds")
+def hold_seats(
+    payload: SeatHoldCreate,
+    db: DbSession,
+    user: Annotated[User, Depends(get_current_user)],
+):
+    """Temporarily reserve cinema seats for the signed-in user.
+
+    Locking the parent session row serializes hold acquisition and booking
+    attempts for the same show on MySQL/InnoDB.
+    """
+    seat_ids = payload.seat_ids
+    if len(set(seat_ids)) != len(seat_ids):
+        raise HTTPException(status_code=422, detail="Duplicate seat IDs are not allowed")
+
+    now = datetime.now()
+    try:
+        session = db.scalar(
+            select(SessionEvent)
+            .where(SessionEvent.id == payload.session_id, SessionEvent.status == "scheduled")
+            .with_for_update()
+        )
+        if not session:
+            raise HTTPException(status_code=404, detail="Scheduled session not found")
+        if session.movie_id is None:
+            raise HTTPException(status_code=422, detail="This session does not use numbered cinema seats")
+        if session.starts_at <= now:
+            raise HTTPException(status_code=409, detail="This session has already started")
+
+        seats = db.scalars(
+            select(Seat)
+            .where(Seat.id.in_(seat_ids), Seat.venue_space_id == session.venue_space_id)
+            .with_for_update()
+        ).all()
+        if len(seats) != len(seat_ids):
+            raise HTTPException(status_code=422, detail="A seat does not belong to this session screen")
+
+        booked = set(db.scalars(
+            select(BookingItem.seat_id)
+            .join(Booking, BookingItem.booking_id == Booking.id)
+            .where(
+                Booking.session_id == session.id,
+                Booking.status == "confirmed",
+                BookingItem.seat_id.in_(seat_ids),
+            )
+            .with_for_update()
+        ).all())
+        if booked:
+            raise HTTPException(status_code=409, detail="One or more selected seats are already booked")
+
+        # Expired rows no longer block inventory. Remove them opportunistically
+        # whenever someone tries to acquire seats for this session.
+        db.execute(delete(ShowSeatHold).where(
+            ShowSeatHold.session_id == session.id,
+            ShowSeatHold.expires_at <= now,
+        ))
+
+        active_holds = db.scalars(
+            select(ShowSeatHold)
+            .where(
+                ShowSeatHold.session_id == session.id,
+                ShowSeatHold.seat_id.in_(seat_ids),
+                ShowSeatHold.expires_at > now,
+            )
+            .with_for_update()
+        ).all()
+        holds_by_seat = {hold.seat_id: hold for hold in active_holds}
+        conflicts = [
+            seat_id for seat_id, hold in holds_by_seat.items()
+            if hold.user_id != user.id
+        ]
+        if conflicts:
+            raise HTTPException(
+                status_code=409,
+                detail="One or more selected seats are temporarily held by another customer",
+            )
+
+        # Selecting a new set replaces this user's previous unexpired selection
+        # for the same show, releasing seats they no longer want.
+        db.execute(delete(ShowSeatHold).where(
+            ShowSeatHold.session_id == session.id,
+            ShowSeatHold.user_id == user.id,
+            ShowSeatHold.expires_at > now,
+            ShowSeatHold.seat_id.not_in(seat_ids),
+        ))
+
+        expires_at = now + timedelta(minutes=settings.seat_hold_minutes)
+        for seat_id in seat_ids:
+            hold = holds_by_seat.get(seat_id)
+            if hold is None:
+                db.add(ShowSeatHold(
+                    session_id=session.id,
+                    seat_id=seat_id,
+                    user_id=user.id,
+                    expires_at=expires_at,
+                ))
+            else:
+                hold.expires_at = expires_at
+
+        db.commit()
+        return {
+            "session_id": session.id,
+            "seat_ids": seat_ids,
+            "expires_at": expires_at,
+            "hold_minutes": settings.seat_hold_minutes,
+        }
+    except HTTPException:
+        db.rollback()
+        raise
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Seat inventory changed; refresh availability and retry")
+
+
+@router.delete("/holds/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def release_seat_holds(
+    session_id: int,
+    db: DbSession,
+    user: Annotated[User, Depends(get_current_user)],
+):
+    session = db.scalar(
+        select(SessionEvent).where(SessionEvent.id == session_id).with_for_update()
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    db.execute(delete(ShowSeatHold).where(
+        ShowSeatHold.session_id == session_id,
+        ShowSeatHold.user_id == user.id,
+    ))
+    db.commit()
+    return None
 
 
 @router.post("", response_model=BookingOut, status_code=status.HTTP_201_CREATED)
@@ -68,6 +205,22 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
                        BookingItem.seat_id.in_(seat_ids)).with_for_update()).all()
             if taken:
                 raise HTTPException(status_code=409, detail="One or more seats are already booked")
+
+            live_holds = db.scalars(select(ShowSeatHold).where(
+                ShowSeatHold.session_id == session.id,
+                ShowSeatHold.seat_id.in_(seat_ids),
+                ShowSeatHold.expires_at > datetime.now(),
+            ).with_for_update()).all()
+            held_by_seat = {hold.seat_id: hold for hold in live_holds}
+            if any(
+                seat_id not in held_by_seat or held_by_seat[seat_id].user_id != user.id
+                for seat_id in seat_ids
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Your seat hold has expired or belongs to another customer. Select the seats again.",
+                )
+
             for seat in seats:
                 configured_price = db.scalar(select(TicketType.price).where(
                     TicketType.session_id == session.id,
@@ -107,6 +260,12 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
         db.add(BookingTicket(booking_id=booking.id, ticket_code=ticket_code))
         # Demo-only payment confirmation. No card/UPI credentials are collected.
         db.add(Payment(booking_id=booking.id, provider=payload.payment_method, amount=grand_total, status="succeeded"))
+        if has_seats:
+            db.execute(delete(ShowSeatHold).where(
+                ShowSeatHold.session_id == session.id,
+                ShowSeatHold.seat_id.in_(payload.seat_ids or []),
+                ShowSeatHold.user_id == user.id,
+            ))
         db.commit()
         db.refresh(booking)
         return booking
