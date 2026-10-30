@@ -4,6 +4,7 @@ Run from the backend directory with: python -m scripts.seed_demo
 The script prompts for an organizer account and never contains a default password.
 """
 from datetime import datetime, timedelta
+from decimal import Decimal
 from getpass import getpass
 
 from sqlalchemy import select
