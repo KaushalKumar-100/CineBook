@@ -1,9 +1,12 @@
+import base64
 from datetime import datetime, timedelta
+from io import BytesIO
 from decimal import Decimal
 from secrets import token_urlsafe
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+import qrcode
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 
@@ -16,6 +19,16 @@ router = APIRouter(prefix="/bookings", tags=["Bookings"])
 settings = get_settings()
 
 
+
+
+
+def build_ticket_qr_data_url(ticket_code: str) -> str:
+    """Create a PNG QR data URL containing only the unguessable ticket code."""
+    image = qrcode.make(ticket_code, box_size=8, border=4)
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
 
 
 @router.post("/holds")
@@ -288,6 +301,36 @@ def get_booking(booking_id: int, db: DbSession, user: Annotated[User, Depends(ge
     if not booking or (booking.user_id != user.id and user.role != "admin"):
         raise HTTPException(status_code=404, detail="Booking not found")
     return booking
+
+
+
+@router.get("/{booking_id}/ticket/qr")
+def get_booking_ticket_qr(
+    booking_id: int,
+    db: DbSession,
+    user: Annotated[User, Depends(get_current_user)],
+):
+    """Return a downloadable QR image after a confirmed booking."""
+    booking = db.get(Booking, booking_id)
+    if not booking or (booking.user_id != user.id and user.role != "admin"):
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.status != "confirmed" or not booking.ticket_code:
+        raise HTTPException(status_code=409, detail="A confirmed ticket is not available for this booking")
+
+    ticket = db.scalar(select(BookingTicket).where(
+        BookingTicket.booking_id == booking.id,
+        BookingTicket.ticket_code == booking.ticket_code,
+    ))
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket record not found")
+
+    return {
+        "booking_reference": booking.booking_reference,
+        "ticket_code": ticket.ticket_code,
+        "qr_code_data_url": build_ticket_qr_data_url(ticket.ticket_code),
+        "format": "PNG",
+        "contains": "ticket_code_only",
+    }
 
 
 @router.post("/{booking_id}/cancel", response_model=BookingOut)
