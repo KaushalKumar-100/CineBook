@@ -531,10 +531,23 @@ def main() -> None:
                 ensure_ticket_type(db, session, "General Admission", "Standard event entry", row["price"], row["capacity"] * 3 // 4)
                 ensure_ticket_type(db, session, "Premium", "Premium event entry", row["premium"], max(1, row["capacity"] // 4))
 
+        # Add five more Indian metro cities to the searchable city directory.
+        # These are city records only; do not invent venues or live showtimes.
+        additional_cities = [
+            ("Delhi", "Delhi"),
+            ("Bengaluru", "Karnataka"),
+            ("Hyderabad", "Telangana"),
+            ("Kolkata", "West Bengal"),
+            ("Pune", "Maharashtra"),
+        ]
+        for city_name, state_name in additional_cities:
+            ensure_city(db, city_name, state_name)
+
         db.commit()
         print("CineBook demo data is ready.")
         print("Created/verified: Guwahati cinema + 60 categorized seats, five movie listings,")
         print("Bhumika theatre dates in Nagpur, and three Mumbai experience listings.")
+        print("Added city directory entries: Delhi, Bengaluru, Hyderabad, Kolkata, and Pune.")
         print("All seeded showtimes, seat inventory and prices are demo values.")
         print(f"Organizer account: {organizer.email} (role: {organizer.role})")
         print("Restart the API if it is already running, then refresh the frontend.")
