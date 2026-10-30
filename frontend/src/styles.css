@@ -265,3 +265,79 @@ img { color: transparent; }
   .venue-grid { grid-template-columns: 1fr; }
   .venue-card { padding: 14px; }
 }
+
+
+/* BookMyShow-inspired multi-step demo booking flow. */
+.field-optional{color:#827b88;font-weight:400;font-size:10px}
+.booking-modal{max-height:calc(100vh - 40px);overflow-y:auto;align-items:start}
+.booking-modal .modal-content{align-self:start}
+.booking-stepper{display:flex;align-items:center;gap:8px;margin:22px 0 16px}
+.booking-stepper span{display:flex;align-items:center;gap:6px;color:#807a87;font-size:9px;white-space:nowrap}
+.booking-stepper span:first-letter{display:inline-grid}
+.booking-stepper span::first-letter{font-weight:800}
+.booking-stepper span.active{color:#ffad8d}
+.booking-stepper span.done{color:#83dba6}
+.booking-stepper b{font-weight:700}
+.booking-stepper i{height:1px;flex:1;background:#ffffff20}
+.session-location{display:flex;align-items:center;gap:6px}
+.session-location svg{color:var(--accent)}
+.seat-legend{display:flex;align-items:center;justify-content:center;gap:13px;flex-wrap:wrap;margin:0 0 12px;color:#9e98a4;font-size:9px}
+.seat-legend span{display:flex;align-items:center;gap:5px}
+.legend-seat{width:10px;height:10px;border:1px solid #ffffff45;border-radius:3px;background:#292832;display:inline-block}
+.legend-seat.chosen{background:var(--accent);border-color:var(--accent)}
+.legend-seat.unavailable{background:#55515c;opacity:.45}
+.seat.seat-premium{border-color:#ad8cda66}
+.seat.seat-recliner{border-color:#e6bd7466}
+.seat.seat-premium.chosen,.seat.seat-recliner.chosen{background:var(--accent);border-color:var(--accent)}
+.selected-seat-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.selected-seat-chips span{padding:5px 7px;border:1px solid #f47c5545;border-radius:6px;color:#ffb194;background:#f47c5510;font-size:9px}
+.price-breakdown{margin-top:17px;padding:13px 14px;border:1px solid var(--line);border-radius:11px;background:#111116}
+.price-breakdown>div{display:flex;justify-content:space-between;gap:12px;padding:5px 0;color:#aaa5b0;font-size:10px}
+.price-breakdown b{color:#f4eef4;font-variant-numeric:tabular-nums}
+.price-breakdown .price-total{border-top:1px dashed #ffffff26;margin-top:6px;padding-top:12px;color:#fff;font-weight:700;font-size:12px}
+.price-breakdown .price-total b{color:#ffad8d;font-size:16px}
+.checkout-panel{margin-top:20px}
+.checkout-panel h3,.ticket-confirmation h3{font-family:var(--serif);font-size:23px;margin:0 0 5px}
+.checkout-panel h4{font-size:11px;margin:19px 0 9px}
+.checkout-recap{margin-top:15px;padding:12px 13px;border:1px solid var(--line);border-radius:11px;background:#111116}
+.checkout-recap>div{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:7px 0;border-bottom:1px solid #ffffff0b}
+.checkout-recap>div:last-child{border-bottom:0}
+.checkout-recap span{color:#898390;font-size:9px;flex:0 0 34%}
+.checkout-recap b{color:#eee8f0;font-size:10px;text-align:right;overflow-wrap:anywhere}
+.payment-methods{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.payment-method{display:flex;align-items:flex-start;gap:7px;min-width:0;padding:10px 8px;border:1px solid var(--line);border-radius:9px;background:#111116;color:#eee8f0;text-align:left}
+.payment-method.selected{border-color:#f47c55;background:#f47c5512}
+.payment-radio{display:grid;place-items:center;width:14px;height:14px;flex:0 0 14px;border:1px solid #817986;border-radius:50%;font-size:8px;color:var(--accent)}
+.payment-method.selected .payment-radio{border-color:var(--accent)}
+.payment-method b,.payment-method small{display:block}
+.payment-method b{font-size:10px}
+.payment-method small{margin-top:4px;color:#898390;font-size:8px;line-height:1.4}
+.demo-safe-note{margin-top:15px;padding:11px 12px;border:1px solid #e3ae5744;border-radius:9px;background:#e3ae570c}
+.demo-safe-note>span{color:#e8bd77;font-size:8px;font-weight:800;letter-spacing:1.2px}
+.demo-safe-note p{margin:5px 0 0;color:#aaa3ae;font-size:9px;line-height:1.55}
+.ticket-confirmation{text-align:center;margin-top:18px}
+.ticket-success-mark{display:grid;place-items:center;width:46px;height:46px;margin:0 auto 13px;border-radius:50%;background:#17482f;color:#8ee2ae;font-size:27px;font-weight:800}
+.ticket-confirmation>p{color:#aaa5b0;font-size:10px;line-height:1.6}
+.issued-ticket-code{margin:16px 0;padding:13px;border:1px dashed #f47c55a0;border-radius:10px;background:#f47c5510;color:#ffb291;font-size:17px;font-weight:800;letter-spacing:2px;overflow-wrap:anywhere}
+.payment-approved{color:#8ee2ae!important}
+.ticket-confirmation .modal-actions{justify-content:center}
+@media(max-width:760px){
+  .booking-modal{max-height:calc(100vh - 20px);width:min(500px,100%)}
+  .booking-modal .modal-content{padding:22px 19px}
+  .booking-stepper{gap:5px}
+  .booking-stepper span{font-size:8px;gap:4px}
+  .payment-methods{grid-template-columns:1fr}
+  .payment-method{align-items:center}
+}
+@media print{
+  @page{margin:12mm}
+  body *{visibility:hidden!important}
+  #printable-ticket,#printable-ticket *{visibility:visible!important}
+  #printable-ticket{position:absolute;left:0;top:0;width:100%;color:#111!important;background:#fff!important;padding:20px}
+  #printable-ticket h3,#printable-ticket p,#printable-ticket .checkout-recap span,#printable-ticket .checkout-recap b{color:#111!important}
+  #printable-ticket .checkout-recap{background:#fff!important;border:1px solid #ccc}
+  #printable-ticket .demo-safe-note{background:#fff!important;border:1px solid #ccc}
+  #printable-ticket .demo-safe-note p{color:#333!important}
+  #printable-ticket .modal-actions{display:none!important}
+  .issued-ticket-code{color:#111!important;border-color:#555!important}
+}
