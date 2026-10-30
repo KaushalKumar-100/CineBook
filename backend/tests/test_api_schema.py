@@ -107,3 +107,49 @@ def test_ticket_qr_endpoint_is_registered_and_returns_png_data_url():
     assert data_url.startswith("data:image/png;base64,")
     image_bytes = b64decode(data_url.split(",", 1)[1])
     assert image_bytes[:8] == bytes.fromhex("89504e470d0a1a0a")
+
+
+def test_platform_module_tables_are_registered():
+    expected = {
+        "organizer_applications",
+        "password_reset_tokens",
+        "notifications",
+        "event_reviews",
+        "refund_requests",
+        "audit_logs",
+    }
+    assert expected.issubset(set(Base.metadata.tables))
+
+
+def test_portal_and_integration_routes_are_registered():
+    paths = app.openapi()["paths"]
+    expected = {
+        "/api/v1/portal/profile",
+        "/api/v1/portal/dashboard",
+        "/api/v1/portal/organizer-applications",
+        "/api/v1/portal/admin/organizer-applications",
+        "/api/v1/portal/admin/events/pending",
+        "/api/v1/portal/admin/refunds",
+        "/api/v1/portal/tickets/check-in",
+        "/api/v1/portal/reports/sales",
+        "/api/v1/integrations/tmdb/search",
+        "/api/v1/integrations/tmdb/import",
+        "/api/v1/integrations/ticketmaster/events",
+        "/api/v1/integrations/posters",
+        "/api/v1/integrations/ai/event-description",
+        "/api/v1/auth/password-reset/request",
+        "/api/v1/auth/password-reset/confirm",
+    }
+    assert expected.issubset(set(paths))
+
+
+def test_sessions_support_general_admission_and_assigned_seating():
+    columns = set(Base.metadata.tables["sessions"].columns.keys())
+    assert "booking_mode" in columns
+    values = app.openapi()["components"]["schemas"]["SessionCreate"]["properties"]["booking_mode"]["enum"]
+    assert values == ["assigned", "general_admission"]
+
+
+def test_ticket_checkin_is_single_use_metadata():
+    columns = set(Base.metadata.tables["booking_tickets"].columns.keys())
+    assert {"checked_in_at", "checked_in_by"}.issubset(columns)

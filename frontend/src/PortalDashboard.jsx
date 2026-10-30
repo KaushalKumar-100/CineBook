@@ -56,7 +56,9 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
   const [report, setReport] = useState([]);
   const [applicationForm, setApplicationForm] = useState({ organization_name: "", contact_phone: currentUser?.phone || "", website: "", description: "" });
   const [eventForm, setEventForm] = useState({ title: "", description: "", city_id: "", category_id: "", venue_id: "", venue_space_id: "", starts_at: "", duration: 120, booking_mode: "general_admission", price: 499, premium_price: 799, capacity: 100, poster_url: "" });
+  const [seatLayout, setSeatLayout] = useState({ venue_space_id: "", rows: "A,B,C,D", seats_per_row: 10 });
   const [newVenue, setNewVenue] = useState({ city_id: "", name: "", venue_type: "auditorium", address: "" });
+  const [newSpace, setNewSpace] = useState({ venue_id: "", name: "", space_type: "hall", capacity: 100 });
   const [userQuery, setUserQuery] = useState("");
   const [tmdbQuery, setTmdbQuery] = useState("");
   const [tmdbResults, setTmdbResults] = useState([]);
@@ -171,13 +173,13 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
 
   async function createEventAndSession(event) {
     event.preventDefault();
-    const start = new Date(eventForm.starts_at);
-    if (!eventForm.venue_space_id || Number.isNaN(start.getTime())) {
+    const startsAt = new Date(eventForm.starts_at);
+    const venueSpace = spacesForVenue.find((item) => String(item.id) === String(eventForm.venue_space_id));
+    if (!venueSpace || Number.isNaN(startsAt.getTime()) || startsAt <= new Date()) {
       setError("Choose a venue space and a valid future date/time.");
       return;
     }
     await runAction(async () => {
-      const venue = venues.find((item) => String(item.id) === String(eventForm.venue_id));
       const created = await request(apiBase, token, "/manage/events", {
         method: "POST",
         body: JSON.stringify({
@@ -185,7 +187,7 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
           city_id: Number(eventForm.city_id),
           category_id: Number(eventForm.category_id),
           venue_id: Number(eventForm.venue_id),
-          title: eventForm.title,
+          title: eventForm.title.trim(),
           description: eventForm.description,
           event_type: "local",
           poster_url: eventForm.poster_url || null,
@@ -196,8 +198,8 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
         body: JSON.stringify({
           event_id: created.id,
           venue_space_id: Number(eventForm.venue_space_id),
-          starts_at: start.toISOString(),
-          ends_at: new Date(start.getTime() + Number(eventForm.duration) * 60000).toISOString(),
+          starts_at: startsAt.toISOString(),
+          ends_at: new Date(startsAt.getTime() + Number(eventForm.duration) * 60000).toISOString(),
           base_price: Number(eventForm.price),
           tax_percent: 18,
           convenience_fee: 25,
@@ -212,16 +214,16 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
             name: "General Admission",
             description: "Standard admission",
             price: Number(eventForm.price),
-            capacity: Number(eventForm.capacity),
+            capacity: Math.min(Number(eventForm.capacity), Number(venueSpace.capacity)),
           }),
-        }).catch(() => null);
+        });
       }
       if (isOrganizer) {
         await request(apiBase, token, `/portal/events/${created.id}/submit`, { method: "POST" });
       } else {
         await request(apiBase, token, `/manage/events/${created.id}/publish`, { method: "POST" });
       }
-    }, isOrganizer ? "Event and session created. Submitted for admin approval." : "Event and session created and published.");
+    }, isOrganizer ? "Event created and submitted for admin approval." : "Event created and published.");
   }
 
   async function decide(path, body, success) {
@@ -237,11 +239,90 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
     }), "User status updated.");
   }
 
+  async function createSeatLayout(event) {
+    event.preventDefault();
+    const rows = seatLayout.rows.split(",").map((row) => row.trim()).filter(Boolean);
+    if (!seatLayout.venue_space_id || !rows.length) {
+      setError("Choose a venue space and provide at least one row label.");
+      return;
+    }
+    const query = new URLSearchParams({
+      venue_space_id: seatLayout.venue_space_id,
+      seats_per_row: String(seatLayout.seats_per_row),
+    });
+    await runAction(() => request(apiBase, token, `/manage/seats/bulk?${query}`, {
+      method: "POST",
+      body: JSON.stringify(rows),
+    }), "Seat layout created.");
+  }
+
+  async function uploadPoster(file) {
+    if (!file) return;
+    setBusy(true);
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch(api(apiBase, "/integrations/posters"), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || "Poster upload failed.");
+      setEventForm((current) => ({ ...current, poster_url: data.poster_url }));
+      showMessage("Poster uploaded and attached to the event form.");
+    } catch (failure) {
+      setError(failure.message || "Poster upload failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function generateDescription() {
+    setBusy(true);
+    setError("");
+    try {
+      const data = await request(apiBase, token, "/integrations/ai/event-description", {
+        method: "POST",
+        body: JSON.stringify({
+          title: eventForm.title,
+          category: categories.find((item) => String(item.id) === String(eventForm.category_id))?.name || "Event",
+          city: cities.find((item) => String(item.id) === String(eventForm.city_id))?.name || "City",
+          venue: venues.find((item) => String(item.id) === String(eventForm.venue_id))?.name || null,
+          highlights: [],
+          tone: "professional",
+        }),
+      });
+      setEventForm((current) => ({ ...current, description: data.description }));
+      showMessage("AI draft generated. Review it before publishing.");
+    } catch (failure) {
+      setError(failure.message || "AI description generation failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function createVenue(event) {
     event.preventDefault();
     await runAction(() => request(apiBase, token, "/manage/venues", {
       method: "POST", body: JSON.stringify({ ...newVenue, city_id: Number(newVenue.city_id) }),
     }), "Venue created.");
+  }
+
+  async function createVenueSpace(event) {
+    event.preventDefault();
+    await runAction(() => request(apiBase, token, "/manage/venue-spaces", {
+      method: "POST",
+      body: JSON.stringify({ ...newSpace, venue_id: Number(newSpace.venue_id), capacity: Number(newSpace.capacity) }),
+    }), "Venue space created.");
+  }
+
+  async function toggleVenue(venueId, isActive) {
+    await runAction(() => request(apiBase, token, `/portal/admin/venues/${venueId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_active: !isActive }),
+    }), "Venue status updated.");
   }
 
   async function searchTmdb(event) {
@@ -347,13 +428,24 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
                 <label>Capacity<input type="number" min="1" max="1000000" value={eventForm.capacity} onChange={(e) => setEventForm({ ...eventForm, capacity: e.target.value })} /></label>
                 <label>Poster URL (optional)<input type="url" value={eventForm.poster_url} onChange={(e) => setEventForm({ ...eventForm, poster_url: e.target.value })} /></label>
                 <label className="span-2">Description<textarea required value={eventForm.description} onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })} /></label>
+                <div className="span-2 portal-inline-form"><button type="button" className="secondary-button" disabled={busy || !eventForm.title || !eventForm.city_id || !eventForm.category_id} onClick={generateDescription}>Draft with AI</button><small className="portal-muted">Needs OPENAI_API_KEY; review the suggestion before submission.</small></div>
+                <label className="span-2">Poster image<input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={(e) => uploadPoster(e.target.files?.[0])} /></label>
+                {eventForm.poster_url && <p className="span-2 portal-muted">Poster uploaded: {eventForm.poster_url}</p>}
                 <div className="span-2"><button className="primary-button" disabled={busy}>Create event & schedule session</button></div>
               </form>
             </Panel>
             <Panel title="Your event listings" subtitle="Check the moderation state and the sessions you've submitted">
               {myEvents.length ? myEvents.map((item) => <div className="portal-list-row" key={item.id}><div><b>{item.title}</b><small>Event #{item.id} · City #{item.city_id}</small></div><Status value={item.status} /></div>) : <p className="portal-muted">No events have been created yet.</p>}
             </Panel>
-            {isAdmin && <Panel title="Create a venue" subtitle="Add a venue directory record; then configure spaces/seats through the management API">
+            <Panel title="Create a reusable seat layout" subtitle="Prepare rows and numbered seats before scheduling an assigned-seat show">
+              <form className="portal-form portal-form-grid" onSubmit={createSeatLayout}>
+                <label>Venue space<select required value={seatLayout.venue_space_id} onChange={(e) => setSeatLayout({ ...seatLayout, venue_space_id: e.target.value })}><option value="">Choose space</option>{venues.flatMap((venue) => (venue.spaces || []).map((space) => ({ ...space, venueName: venue.name }))).map((space) => <option key={space.id} value={space.id}>{space.venueName} · {space.name} · capacity {space.capacity}</option>)}</select></label>
+                <label>Rows (comma-separated)<input required value={seatLayout.rows} onChange={(e) => setSeatLayout({ ...seatLayout, rows: e.target.value })} /></label>
+                <label>Seats per row<input type="number" min="1" max="1000" required value={seatLayout.seats_per_row} onChange={(e) => setSeatLayout({ ...seatLayout, seats_per_row: Number(e.target.value) })} /></label>
+                <div className="span-2"><button className="secondary-button" disabled={busy}>Create seat layout</button><p className="portal-muted">Rows must be unique and total seats cannot exceed venue capacity.</p></div>
+              </form>
+            </Panel>
+            {isAdmin && <Panel title="Create a venue" subtitle="Register a venue in a city, then add its halls/screens and seating layout">
               <form className="portal-form portal-form-grid" onSubmit={createVenue}>
                 <label>City<select required value={newVenue.city_id} onChange={(e) => setNewVenue({ ...newVenue, city_id: e.target.value })}><option value="">Choose city</option>{cities.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
                 <label>Venue name<input required value={newVenue.name} onChange={(e) => setNewVenue({ ...newVenue, name: e.target.value })} /></label>
@@ -362,11 +454,23 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
                 <div className="span-2"><button className="secondary-button" disabled={busy}>Add venue</button></div>
               </form>
             </Panel>}
+            {(isAdmin || isOrganizer) && <Panel title="Add a venue space" subtitle="Create a hall, stage, screen or open area inside a venue you manage">
+              <form className="portal-form portal-form-grid" onSubmit={createVenueSpace}>
+                <label>Venue<select required value={newSpace.venue_id} onChange={(e) => setNewSpace({ ...newSpace, venue_id: e.target.value })}><option value="">Choose venue</option>{venues.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
+                <label>Space name<input required value={newSpace.name} onChange={(e) => setNewSpace({ ...newSpace, name: e.target.value })} placeholder="Main Hall / Screen 1" /></label>
+                <label>Space type<select value={newSpace.space_type} onChange={(e) => setNewSpace({ ...newSpace, space_type: e.target.value })}>{["screen","hall","stage","open_area","other"].map((v) => <option key={v} value={v}>{v.replaceAll("_", " ")}</option>)}</select></label>
+                <label>Capacity<input type="number" min="1" max="1000000" required value={newSpace.capacity} onChange={(e) => setNewSpace({ ...newSpace, capacity: e.target.value })} /></label>
+                <div className="span-2"><button className="secondary-button" disabled={busy}>Add venue space</button></div>
+              </form>
+            </Panel>}
+            {isAdmin && <Panel title="Venue directory" subtitle="Enable or temporarily hide venues from public discovery">
+              {venues.map((venue) => <div className="portal-list-row" key={venue.id}><div><b>{venue.name}</b><small>{venue.city?.name || "City"} · {venue.address}</small></div><div className="portal-row-actions"><Status value={venue.is_active ? "active" : "disabled"} /><button className="secondary-button" onClick={() => toggleVenue(venue.id, venue.is_active)}>{venue.is_active ? "Disable" : "Enable"}</button></div></div>)}
+            </Panel>}}
           </div>}
 
           {section === "analytics" && (isOrganizer || isAdmin) && <Panel title="Sales analytics" subtitle="Confirmed bookings and gross demo sales by event">
-            {isOrganizer && myEvents.map((event) => <div className="portal-list-row" key={event.id}><div><b>{event.title}</b><small>Event status: {event.status}</small></div><span>Open dashboard stats for revenue & bookings</span></div>)}
-            <p className="portal-muted">Summary cards above show the current account totals. Admins can open Reports & audit for the daily platform sales series.</p>
+            {isOrganizer && organizerAnalytics.map((event) => <div className="portal-list-row" key={event.event_id}><div><b>{event.title}</b><small>{event.confirmed_bookings} confirmed bookings</small></div><strong>₹{Number(event.gross_sales).toLocaleString("en-IN")}</strong></div>)}
+            <p className="portal-muted">Gross sales reflect confirmed demo bookings, not real payment settlements.</p>
           </Panel>}
 
           {section === "moderation" && isAdmin && <div className="portal-stack">
@@ -387,7 +491,7 @@ export default function PortalDashboard({ apiBase, token, currentUser, onNotice,
           </div>}
 
           {section === "refund-queue" && isAdmin && <Panel title="Refund requests" subtitle="Review the customer's request. Processing is simulated until a provider refund integration is configured.">
-            {refunds.length ? refunds.map((refund) => <div className="portal-moderation-row" key={refund.id}><div><b>{refund.user?.name} · Booking #{refund.booking_id}</b><small>₹{Number(refund.amount).toFixed(2)} · {refund.created_at ? new Date(refund.created_at).toLocaleString() : ""}</small><p>{refund.reason}</p></div><div className="portal-row-actions"><button className="primary-button" onClick={() => decide(`/portal/admin/refunds/${refund.id}/decision`, { decision: "approve" }, "Refund request approved.")}>Approve</button><button className="secondary-button" onClick={() => decide(`/portal/admin/refunds/${refund.id}/decision`, { decision: "reject", note: reviewNote }, "Refund request rejected.")}>Reject</button></div></div>) : <p className="portal-muted">No pending refunds.</p>}
+            {refunds.length ? refunds.map((refund) => <div className="portal-moderation-row" key={refund.id}><div><b>{refund.user?.name} · Booking #{refund.booking_id}</b><small>₹{Number(refund.amount).toFixed(2)} · {refund.created_at ? new Date(refund.created_at).toLocaleString() : ""}</small><p>{refund.reason}</p><Status value={refund.status} /></div><div className="portal-row-actions">{refund.status === "requested" && <><button className="primary-button" onClick={() => decide(`/portal/admin/refunds/${refund.id}/decision`, { decision: "approve", note: reviewNote }, "Refund request approved.")}>Approve</button><button className="secondary-button" onClick={() => decide(`/portal/admin/refunds/${refund.id}/decision`, { decision: "reject", note: reviewNote }, "Refund request rejected.")}>Reject</button></>}{refund.status === "approved" && <button className="primary-button" onClick={() => decide(`/portal/admin/refunds/${refund.id}/decision`, { decision: "process", note: reviewNote }, "Demo refund processed; no money was transferred.")}>Process demo refund</button>}</div></div>) : <p className="portal-muted">No refund requests.</p>}
             <label className="portal-note-field">Resolution note<input value={reviewNote} onChange={(e) => setReviewNote(e.target.value)} /></label>
           </Panel>}
 

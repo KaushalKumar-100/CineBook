@@ -17,7 +17,7 @@ Copy-Item .env.example .env
 
 Edit `backend/.env` locally. Set your MySQL user/password and replace `SECRET_KEY` with a long random secret. Keep `.env` private.
 
-Create the database by running `backend/sql/schema.sql` in MySQL Workbench (it creates `cinebook_db` and the current tables). For an existing CineBook database, first take a backup and then run `backend/sql/migrations/002_venue_booking_flow.sql` to add the venue/show booking fields and inventory tables without deleting demo data. The optional `backend/sql/seed_demo.sql` adds a small legacy starter dataset. For the complete sample catalogue and bookable demo inventory, use the interactive Python seeder below after configuring `.env`. On an existing database, apply migration `002_venue_booking_flow.sql` after taking a backup before running the seeder.
+Create the database by running `backend/sql/schema.sql` in MySQL Workbench (it creates `cinebook_db` and the current tables). For an existing CineBook database, first take a backup and then run migrations `backend/sql/migrations/002_venue_booking_flow.sql` and `backend/sql/migrations/003_platform_modules.sql` in that order. Migration 003 adds organizer applications, moderation statuses, profile reset tokens, notifications, refunds, reviews, audit logs, ticket check-in and reporting views; it also adds TMDB IDs and explicit event session booking modes. The optional `backend/sql/seed_demo.sql` adds a small legacy starter dataset. For the complete sample catalogue and bookable demo inventory, use the interactive Python seeder below after configuring `.env`. On an existing database, apply both migrations `002` and `003` after taking a backup before running the seeder.
 
 Run the local-only demo seeder from `backend/` (it creates missing tables and prompts for an organizer email/password; no default credentials are stored in the project). It adds five movie listings, 60 cinema seats across Standard/Premium/Recliner price tiers, the Bhumika Marathi play at Vasantrao Deshpande Hall in Nagpur, Mumbai event samples including The Messi Experience, Papa Yaar by Zakir Khan, and CALVIN HARRIS, plus a clearly disclosed Philharmonic demo-only checkout session for 21 Nov 2026 at 7:00 PM (General Admission ₹499 / Premium ₹799). The supplied concert poster says Event Closed; this seeded show is invented test inventory and is not a real event or valid admission. The seeder also adds Delhi, Bengaluru, Hyderabad, Kolkata, and Pune in the city directory. The five new cities are directory entries only; venues and actual events must be supplied by verified imports or organizer/admin records. Seeded schedules, capacity, prices, tax and convenience fees are demo values:
 
@@ -44,6 +44,7 @@ For local coursework, missing tables are auto-created only when `APP_ENV=develop
 - `POST /api/v1/auth/register`: create customer account.
 - `POST /api/v1/auth/login`: form fields `username` (email) and `password`; returns bearer token.
 - `GET /api/v1/auth/me`: current user.
+- `POST /api/v1/auth/password-reset/request` and `POST /api/v1/auth/password-reset/confirm`: hashed, expiring, single-use reset tokens. Configure SMTP to deliver production reset links; local development can return a temporary test token.
 
 ### Public discovery
 - `GET /api/v1/cities` — returns all seeded and administrator-created cities, including Guwahati, Tezpur, Nagpur, Mumbai, Delhi, Bengaluru, Hyderabad, Kolkata, and Pune after demo seeding.
@@ -108,3 +109,24 @@ The project demonstrates normalization, PK/FK relationships, unique constraints,
 - `booking_tickets` stores issued ticket codes separately from seat inventory.
 
 The discovery endpoints are database-backed. Venue poster/image URLs are not yet stored in the venue model, so the venue API currently returns an empty `images` list rather than inventing URLs. Movie/play plot summaries in the demo catalogue are sourced from the supplied screenshots/listing descriptions; all show dates and prices used by the demo seeder are explicitly sample values.
+
+
+## Customer, organizer and administrator portal
+
+The React header contains a Dashboard link for signed-in accounts. The API enforces role checks; hiding a UI tab is not treated as authorization.
+
+- `GET/PATCH /api/v1/portal/profile`: current profile.
+- `POST /api/v1/portal/organizer-applications`: customer applies for organizer access. Admins list and decide via `GET /api/v1/portal/admin/organizer-applications` and `POST /api/v1/portal/admin/organizer-applications/{id}/decision`.
+- Organizers create draft events and submit them using `POST /api/v1/portal/events/{id}/submit`; admins review via `GET /api/v1/portal/admin/events/pending` and `POST /api/v1/portal/admin/events/{id}/decision`.
+- `GET /api/v1/portal/dashboard`, `GET /api/v1/portal/organizer/analytics`, notifications, event reviews, refund requests, refunds administration, audit logs, sales reporting, and maintenance cleanup are under `/api/v1/portal`.
+- Ticket validation is `POST /api/v1/portal/tickets/check-in` with JSON `{"ticket_code":"..." }`. It is single-use; an organizer can validate only a ticket for their own event.
+- Public poster upload is restricted to organizer/admin accounts and writes image files under `backend/uploads/posters`. Configure `PUBLIC_API_URL` for generated absolute URLs.
+- `GET /api/v1/integrations/tmdb/search` and `POST /api/v1/integrations/tmdb/import` need a TMDB key/token. `GET /api/v1/integrations/ticketmaster/events?city=Mumbai` needs a Ticketmaster key. `POST /api/v1/integrations/ai/event-description` needs an OpenAI API key.
+- Optional outbound password reset email uses SMTP settings. In-app notifications are stored in MySQL; email/SMS push notifications are not connected.
+- `POST /api/v1/portal/bookings/{id}/refund-request` opens a review. Admins can approve/reject; processing a demo-provider refund updates only the demo records. Real Razorpay refunds are not enabled.
+- The per-process rate limiter is a single-instance safeguard, not a substitute for shared Redis/edge throttling on multi-worker production deployments.
+
+## Environment integrations
+
+Copy the optional variables from `backend/.env.example` into your private `.env`:
+`TMDB_READ_ACCESS_TOKEN`, `TMDB_API_KEY`, `TICKETMASTER_API_KEY`, `OPENAI_API_KEY`, and SMTP host/port/user/password/from details. Keep every secret on the backend. Do not paste secrets into GitHub issues, frontend environment files, or chat.
