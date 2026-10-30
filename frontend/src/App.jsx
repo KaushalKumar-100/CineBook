@@ -694,7 +694,7 @@ export default function App() {
                 <label className="booking-terms"><input type="checkbox" checked={bookingAccepted} onChange={(event) => setBookingAccepted(event.target.checked)} /><span>I have reviewed the show details, ticket quantity, price breakdown and demo-only cancellation policy.</span></label>
                 <div className="modal-actions">
                   <button className="secondary-button" onClick={() => setBookingStep("select")}>← Back to seats</button>
-                  <button className="primary-button" disabled={bookingBusy || !bookingAccepted} onClick={submitBooking}>{bookingBusy ? "Processing demo payment…" : `Pay ₹${bookingGrandTotal.toFixed(2)} (Demo)`</button>
+                  <button className="primary-button" disabled={bookingBusy || !bookingAccepted} onClick={submitBooking}>{bookingBusy ? "Processing demo payment…" : `Pay ₹${bookingGrandTotal.toFixed(2)} (Demo)`}</button>
                 </div>
               </div>}
 
