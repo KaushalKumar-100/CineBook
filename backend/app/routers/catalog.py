@@ -151,6 +151,26 @@ def venue_spaces(venue_id: int, db: DbSession):
     ).all()
 
 
+@router.get("/venue-spaces/{space_id}/seats")
+def venue_space_seat_layout(space_id: int, db: DbSession):
+    space = db.get(VenueSpace, space_id)
+    if not space:
+        raise HTTPException(status_code=404, detail="Venue space not found")
+    seats = db.scalars(
+        select(Seat).where(Seat.venue_space_id == space_id).order_by(Seat.row_label, Seat.seat_number)
+    ).all()
+    return {
+        "venue_space_id": space.id,
+        "name": space.name,
+        "capacity": space.capacity,
+        "seat_count": len(seats),
+        "seats": [{
+            "id": seat.id, "row_label": seat.row_label,
+            "seat_number": seat.seat_number, "seat_category": seat.seat_category,
+        } for seat in seats],
+    }
+
+
 @router.get("/movies")
 def list_movies(db: DbSession, q: str | None = Query(default=None, max_length=120)):
     stmt = select(Movie).where(Movie.is_active.is_(True)).order_by(Movie.title)
