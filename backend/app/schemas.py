@@ -193,3 +193,13 @@ class DescriptionAssistInput(BaseModel):
     venue: str | None = Field(default=None, max_length=200)
     highlights: list[str] = Field(default_factory=list, max_length=12)
     tone: Literal["professional", "energetic", "family_friendly", "premium"] = "professional"
+
+
+class TicketCheckIn(BaseModel):
+    ticket_code: str = Field(min_length=12, max_length=64)
+
+
+class MovieImportOptions(BaseModel):
+    tmdb_id: int
+    language: str = Field(default="hi", max_length=10)
+    import_poster: bool = True
