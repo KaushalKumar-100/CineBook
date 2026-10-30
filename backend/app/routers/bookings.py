@@ -55,8 +55,8 @@ def hold_seats(
         )
         if not session:
             raise HTTPException(status_code=404, detail="Scheduled session not found")
-        if session.movie_id is None:
-            raise HTTPException(status_code=422, detail="This session does not use numbered cinema seats")
+        if session.booking_mode != "assigned":
+            raise HTTPException(status_code=422, detail="This session uses general-admission tickets, not assigned seats")
         if session.starts_at <= now:
             raise HTTPException(status_code=409, detail="This session has already started")
 
@@ -193,6 +193,10 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
                 raise HTTPException(status_code=404, detail="Active movie session not found")
         if session.starts_at <= datetime.now():
             raise HTTPException(status_code=409, detail="This session has already started")
+        if has_seats and session.booking_mode != "assigned":
+            raise HTTPException(status_code=422, detail="This session uses general-admission tickets")
+        if has_ticket and session.booking_mode != "general_admission":
+            raise HTTPException(status_code=422, detail="This session uses assigned seats")
 
         booking = Booking(
             booking_reference=token_urlsafe(12).replace("-", "").replace("_", "").upper()[:22],
