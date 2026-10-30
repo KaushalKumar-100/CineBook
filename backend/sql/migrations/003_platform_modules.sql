@@ -5,6 +5,14 @@
 USE cinebook_db;
 SET @schema_name = DATABASE();
 
+-- TMDB source identifier used for idempotent imports.
+SET @ddl = IF(
+  (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=@schema_name AND TABLE_NAME='movies' AND COLUMN_NAME='tmdb_id') = 0,
+  'ALTER TABLE movies ADD COLUMN tmdb_id INT NULL, ADD UNIQUE INDEX uq_movies_tmdb_id (tmdb_id)',
+  'SELECT 1'
+);
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 -- Movie sessions use assigned seats. Events default to general admission until
 -- an organizer/admin explicitly creates an assigned-seat session.
 SET @ddl = IF(
