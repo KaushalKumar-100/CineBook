@@ -193,6 +193,7 @@ export default function App() {
   const [bookingStep, setBookingStep] = useState("select");
   const [bookingResult, setBookingResult] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("demo_upi");
+  const [bookingAccepted, setBookingAccepted] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
@@ -341,6 +342,7 @@ export default function App() {
     setBookingStep("select");
     setBookingResult(null);
     setPaymentMethod("demo_upi");
+    setBookingAccepted(false);
     if (item.demo) return;
     try {
       const isEvent = item.event_type === "local" || item.event_type === "major";
@@ -439,10 +441,15 @@ export default function App() {
       return;
     }
     setBookingError("");
+    setBookingAccepted(false);
     setBookingStep("checkout");
   }
 
   async function submitBooking() {
+    if (!bookingAccepted) {
+      setBookingError("Please accept the demo booking terms before continuing.");
+      return;
+    }
     if (!token) {
       setAuthError("");
       setAuthOpen(true);
@@ -682,9 +689,10 @@ export default function App() {
                 </div>
                 {bookingError && <p className="form-error" role="alert">{bookingError}</p>}
                 <div className="demo-safe-note"><span>DEMO CHECKOUT</span><p>No real payment is processed. Do not enter bank, card, CVV, UPI PIN or OTP details.</p></div>
+                <label className="booking-terms"><input type="checkbox" checked={bookingAccepted} onChange={(event) => setBookingAccepted(event.target.checked)} /><span>I have reviewed the show details, ticket quantity, price breakdown and demo-only cancellation policy.</span></label>
                 <div className="modal-actions">
                   <button className="secondary-button" onClick={() => setBookingStep("select")}>← Back to seats</button>
-                  <button className="primary-button" disabled={bookingBusy} onClick={submitBooking}>{bookingBusy ? "Processing demo payment…" : `Pay ₹${bookingGrandTotal.toFixed(2)} (Demo)`}</button>
+                  <button className="primary-button" disabled={bookingBusy || !bookingAccepted} onClick={submitBooking}>{bookingBusy ? "Processing demo payment…" : `Pay ₹${bookingGrandTotal.toFixed(2)} (Demo)`</button>
                 </div>
               </div>}
 
