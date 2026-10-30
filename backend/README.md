@@ -17,7 +17,7 @@ Copy-Item .env.example .env
 
 Edit `backend/.env` locally. Set your MySQL user/password and replace `SECRET_KEY` with a long random secret. Keep `.env` private.
 
-Create the database by running `backend/sql/schema.sql` in MySQL Workbench (it creates `cinebook_db` and all 13 tables). The optional `backend/sql/seed_demo.sql` adds cities, categories, a demo cinema, one sample movie, 40 seats, and a future show. For the complete sample including a major concert and local workshop, use the interactive Python seeder below after configuring `.env`.
+Create the database by running `backend/sql/schema.sql` in MySQL Workbench (it creates `cinebook_db` and the current tables). For an existing CineBook database, first take a backup and then run `backend/sql/migrations/002_venue_booking_flow.sql` to add the venue/show booking fields and inventory tables without deleting demo data. The optional `backend/sql/seed_demo.sql` adds cities, categories, a demo cinema, one sample movie, 40 seats, and a future show. For the complete sample including a major concert and local workshop, use the interactive Python seeder below after configuring `.env`.
 
 Run the local-only demo seeder from `backend/` (it creates missing tables and prompts for an organizer email/password; no default credentials are stored in the project):
 
@@ -37,7 +37,7 @@ URLs:
 - http://127.0.0.1:8000/health/db
 - http://127.0.0.1:8000/health/schema
 
-For local coursework, missing tables are auto-created only when `APP_ENV=development` and `DEMO_MODE=true`. Disable this mode outside local development. The project currently provides a complete initial SQL DDL script; a versioned migration history is a future hardening step.
+For local coursework, missing tables are auto-created only when `APP_ENV=development` and `DEMO_MODE=true`. Disable this mode outside local development. The versioned SQL migration is the source of truth for upgrading an existing database.
 
 ## API reference
 ### Authentication
@@ -47,7 +47,9 @@ For local coursework, missing tables are auto-created only when `APP_ENV=develop
 
 ### Public discovery
 - `GET /api/v1/cities`
-- `GET /api/v1/venues?city_id=1`
+- `GET /api/v1/venues?city_id=1&q=stadium&venue_type=stadium` — city-scoped venue search
+- `GET /api/v1/venues/{venue_id}` — venue details and capacity summary
+- `GET /api/v1/venues/{venue_id}/events?category_id=1&sort=date` — published upcoming events at that venue only
 - `GET /api/v1/venues/{venue_id}/spaces`
 - `GET /api/v1/movies?q=film`
 - `GET /api/v1/events?city_id=1&event_type=local&q=music`
@@ -88,3 +90,14 @@ From `backend/` run `pytest`. GitHub Actions also runs backend tests and a front
 
 ## Database concepts
 The project demonstrates normalization, PK/FK relationships, unique constraints, check constraints, role-based access, transaction boundaries, and booking-capacity checks.
+
+
+## Venue / show booking schema extension
+
+- `sessions.tax_percent` and `sessions.convenience_fee` hold show-specific checkout settings.
+- `seats.seat_category` describes a physical seat category while the seat remains part of a venue space's reusable layout.
+- `show_seat_holds` scopes temporary locks to one session + physical seat, so the same seat can be sold again for another show.
+- `bookings` stores backend-calculated subtotal, tax, convenience fees, expiry, and optional ticket code.
+- `booking_tickets` stores issued ticket codes separately from seat inventory.
+
+The discovery endpoints are database-backed. Venue poster/image URLs are not yet stored in the venue model, so the venue API currently returns an empty `images` list rather than inventing URLs.
