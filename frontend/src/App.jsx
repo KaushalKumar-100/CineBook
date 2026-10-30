@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import PortalDashboard from "./PortalDashboard";
 import {
 
   Search, MapPin, Ticket, CalendarDays, Film, Music2, Laugh,
@@ -699,6 +700,7 @@ export default function App() {
           <button className={tab === "movies" ? "active" : ""} onClick={() => { setTab("movies"); setMobileMenu(false); }}>Movies</button>
           <button className={tab === "events" ? "active" : ""} onClick={() => { setTab("events"); setMobileMenu(false); }}>Events</button>
           <button onClick={() => { setEventType("local"); setTab("events"); setMobileMenu(false); }}>Local finds</button>
+          {currentUser && <button className={tab === "portal" ? "active" : ""} onClick={() => { setTab("portal"); setMobileMenu(false); }}>Dashboard</button>}
         </nav>
         <div className="top-actions">
           <label className="city-select"><MapPin size={16} /><select value={city} onChange={(event) => { setCity(event.target.value); setCitySearch(""); }} aria-label="Choose city"><option>All cities</option>{cities.map((item) => <option key={item.id}>{item.name}</option>)}</select></label>
@@ -708,6 +710,15 @@ export default function App() {
       </header>
 
       <main>
+        {tab === "portal" && currentUser ? (
+          <PortalDashboard
+            apiBase={API_BASE}
+            token={token}
+            currentUser={currentUser}
+            onNotice={setNotice}
+            onClose={() => setTab("events")}
+          />
+        ) : <>
         <VenueBrowser apiBase={API_BASE} cityId={selectedCityId} cityName={city} onChooseEvent={(item) => bookItem({ ...item, event_type: "local" })} />
 
         <section className="hero">
@@ -760,6 +771,7 @@ export default function App() {
           <div><span className="mini-label">YOUR NEIGHBOURHOOD HAS A STORY</span><h2>Great things happen <em>locally.</em></h2><p>From campus stages to community workshops, make room for the things happening close to home.</p></div>
           <button onClick={() => { setEventType("local"); setTab("events"); setSearch(""); document.getElementById("discover")?.scrollIntoView({ behavior: "smooth" }); }}>Explore local events <ArrowUpRight size={17} /></button>
         </section>
+        </>}
       </main>
 
       <footer className="footer"><a className="brand footer-brand" href="#"><span className="brand-mark"><Ticket size={18} /></span><span>Cine<span>Book</span><small>YOUR CITY. YOUR SCENE.</small></span></a><p>Made for the moments you’ll remember.</p><div><span className={`api-indicator ${apiOnline ? "online" : ""}`}></span>{apiOnline ? "Connected to local API" : "Showing preview data"}</div><small>© 2026 CineBook · DBMS project</small></footer>
