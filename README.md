@@ -17,7 +17,10 @@ CineBook is a DBMS-focused ticket-booking platform inspired by BookMyShow. It su
 - Numbered cinema seats and capacity-limited general-admission tickets.
 - Booking history, cancellation, and simulated payment/refund records.
 - Full MySQL DDL, repeatable SQL seed data, and an interactive major/local event demo seeder.
-- BookMyShow-inspired discovery, venue/showtime selection, price-tiered seat maps, temporary seat holds, a simulated payment gateway with UPI QR display and success/decline test paths, booking confirmation, booking history, and printable QR e-tickets.
+- BookMyShow-inspired discovery, venue/showtime selection, assigned-seat and general-admission inventory, temporary seat holds, checkout with the supplied merchant UPI QR image, booking history, and printable QR e-tickets.
+- Role-based customer, organizer and admin portal with organizer applications, event moderation, event/session creation, venue/space/seat setup, profile editing, notifications, sales reporting and audit records.
+- Refund request/review workflow, verified-booking event reviews, single-use QR ticket check-in, TMDB movie search/import, Ticketmaster event discovery, poster uploads and optional AI-assisted event copy.
+- Hashed single-use password-reset tokens, SMTP delivery when configured, and application-level request limits for sensitive API paths.
 
 ## Quick start (Windows)
 1. Run `backend/sql/schema.sql` in MySQL Workbench.
@@ -30,15 +33,15 @@ CineBook is a DBMS-focused ticket-booking platform inspired by BookMyShow. It su
    Copy-Item .env.example .env
    ```
 3. Edit `backend/.env` locally. Set the MySQL credentials and a long random `SECRET_KEY`. Never commit or share `.env`.
-4. For an existing database, back it up and run `backend/sql/migrations/002_venue_booking_flow.sql` in MySQL Workbench before seeding. From `backend/`, run `python -m scripts.seed_demo` and follow the prompts. The script creates an organizer account, five movie listings, cinema seats in three price categories, Bhumika at Vasantrao Deshpande Hall in Nagpur, sample Mumbai experiences, and five additional city-directory records: Delhi, Bengaluru, Hyderabad, Kolkata, and Pune.
-5. Start the API from `backend/` with `uvicorn app.main:app --reload`; open http://127.0.0.1:8000/docs.
+4. For an existing database, back it up and run migrations `002_venue_booking_flow.sql` and `003_platform_modules.sql` in MySQL Workbench, in that order, before seeding. Migration 003 adds the portal workflows, check-in, refunds, reviews, notifications, audit records, TMDB IDs, event booking modes and reporting views. From `backend/`, run `python -m scripts.seed_demo` and follow the prompts. The script creates an organizer account, five movie listings, cinema seats in three price categories, Bhumika at Vasantrao Deshpande Hall in Nagpur, sample Mumbai experiences, and five additional city-directory records: Delhi, Bengaluru, Hyderabad, Kolkata, and Pune.
+5. Start the API from `backend/` with `python -m uvicorn app.main:app --reload`; open http://127.0.0.1:8000/docs.
 6. Open a second terminal, run `cd frontend`, `npm install`, and `npm run dev`. Open the URL printed by Vite (normally http://localhost:5173).
 
 See [backend/README.md](backend/README.md) and [frontend/README.md](frontend/README.md) for full instructions.
 
 ## Important
 - Movie and play titles/descriptions are based on the supplied sample posters and public listing descriptions. All seeded show dates, seat inventory, ticket rates, tax and convenience charges are demonstration values and must not be treated as live venue availability.
-- Checkout opens a clearly labelled simulated UPI/card/netbanking gateway with success and decline test actions. No payment provider is called, no money is collected, and no card, UPI PIN, CVV or OTP data is requested. Successful demo checkout generates a random ticket reference and downloadable QR code; the QR stores only that reference and is not valid for real-venue entry.
+- Checkout displays the merchant UPI QR at `frontend/public/payment-qr.png`. CineBook cannot verify an external UPI transfer from a static QR, so the current confirmation path is labelled demo/simulation. No live payment provider is called and no card, UPI PIN, CVV or OTP data is requested. Successful demo checkout generates a random ticket reference and downloadable QR code; the QR stores only that reference and is not valid for real-venue entry.
 - `DEMO_MODE=true` enables local development table creation; keep the `.env` file private and do not use demo configuration in production.
 - Run `pytest` from `backend/`; GitHub Actions checks backend tests and builds the frontend.
 
@@ -58,3 +61,14 @@ The frontend now includes locally generated SVG poster artwork for movies, conce
 
 
 For the optional merchant UPI QR display, place your own valid merchant QR image at `frontend/public/payment-qr.png`. Scanning a static QR happens outside CineBook and cannot be verified by this demo app; the confirmation button remains simulated.
+
+
+## Platform modules added on production-hardening
+
+- Apply for organizer access at `POST /api/v1/portal/organizer-applications`; admin decisions are under `/api/v1/portal/admin/organizer-applications`.
+- Organizer events are drafts until they are submitted for review. Admin moderation is under `/api/v1/portal/admin/events`.
+- Portal APIs cover profile, dashboards, notifications, organizer analytics, user/venue status, refunds, reviews, ticket check-in, daily sales and audit records.
+- Movie search/import is available under `/api/v1/integrations/tmdb`; Ticketmaster discovery under `/api/v1/integrations/ticketmaster/events`; poster uploads under `/api/v1/integrations/posters`; AI event copy under `/api/v1/integrations/ai/event-description`.
+- Configure `TMDB_READ_ACCESS_TOKEN`, `TICKETMASTER_API_KEY`, `OPENAI_API_KEY` and SMTP settings in `backend/.env` when you have those provider accounts. Secrets are backend-only.
+- Live Razorpay order creation, signed webhook confirmation and real-provider refunds are still not enabled. The merchant QR is a display-only UPI QR; the app cannot detect or verify a transfer. Organizer/admin demo refunds update internal records only. In-app notifications work, but outbound notification email/SMS providers are not connected.
+- The in-process rate limiter is intended for local/single-instance usage. Deployments with multiple workers should use a shared Redis/edge rate limiter.
