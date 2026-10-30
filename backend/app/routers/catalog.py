@@ -1,13 +1,23 @@
 from datetime import datetime
+from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import joinedload
 
 from app.dependencies import DbSession
-from app.models import Booking, BookingItem, City, Event, EventCategory, Movie, Seat, SessionEvent, TicketType, Venue, VenueSpace
+from app.models import Booking, BookingItem, City, Event, EventCategory, Movie, Seat, SessionEvent, ShowSeatHold, TicketType, Venue, VenueSpace
 
 router = APIRouter(tags=["Discovery"])
+
+
+def _seat_price(db, session_id: int, seat: Seat, base_price: Decimal):
+    configured = db.scalar(select(TicketType.price).where(
+        TicketType.session_id == session_id,
+        TicketType.name.ilike(seat.seat_category),
+        TicketType.is_active.is_(True),
+    ).limit(1))
+    return configured if configured is not None else base_price
 
 
 @router.get("/cities")
@@ -16,7 +26,12 @@ def list_cities(db: DbSession):
 
 
 @router.get("/venues")
-def list_venues(db: DbSession, city_id: int | None = None):
+def list_venues(
+    db: DbSession,
+    city_id: int | None = None,
+    q: str | None = Query(default=None, max_length=120),
+    venue_type: str | None = Query(default=None, max_length=40),
+):
     stmt = (
         select(Venue)
         .where(Venue.is_active.is_(True))
@@ -25,7 +40,106 @@ def list_venues(db: DbSession, city_id: int | None = None):
     )
     if city_id is not None:
         stmt = stmt.where(Venue.city_id == city_id)
-    return db.scalars(stmt).unique().all()
+    if q:
+        stmt = stmt.where(Venue.name.ilike(f"%{q}%"))
+    if venue_type:
+        stmt = stmt.where(Venue.venue_type == venue_type)
+    venues = db.scalars(stmt).unique().all()
+    result = []
+    for venue in venues:
+        spaces = db.scalars(select(VenueSpace).where(VenueSpace.venue_id == venue.id)).all()
+        result.append({
+            "id": venue.id, "city_id": venue.city_id,
+            "city": {"id": venue.city.id, "name": venue.city.name, "state": venue.city.state},
+            "name": venue.name, "venue_type": venue.venue_type, "address": venue.address,
+            "contact_number": venue.contact_number, "images": [],
+            "capacity": sum(space.capacity for space in spaces),
+            "spaces": [{"id": space.id, "name": space.name, "space_type": space.space_type, "capacity": space.capacity} for space in spaces],
+        })
+    return result
+
+
+@router.get("/venues/{venue_id}")
+def get_venue(venue_id: int, db: DbSession):
+    venue = db.scalar(select(Venue).where(Venue.id == venue_id, Venue.is_active.is_(True)).options(joinedload(Venue.city)))
+    if not venue:
+        raise HTTPException(status_code=404, detail="Venue not found")
+    spaces = db.scalars(select(VenueSpace).where(VenueSpace.venue_id == venue.id).order_by(VenueSpace.name)).all()
+    return {
+        "id": venue.id, "name": venue.name, "venue_type": venue.venue_type,
+        "address": venue.address, "contact_number": venue.contact_number,
+        "city": {"id": venue.city.id, "name": venue.city.name, "state": venue.city.state, "country": venue.city.country},
+        "capacity": sum(space.capacity for space in spaces),
+        "spaces": [{"id": space.id, "name": space.name, "space_type": space.space_type, "capacity": space.capacity} for space in spaces],
+    }
+
+
+@router.get("/venues/{venue_id}/events")
+def list_venue_events(
+    venue_id: int,
+    db: DbSession,
+    category_id: int | None = None,
+    from_date: datetime | None = None,
+    to_date: datetime | None = None,
+    min_price: Decimal | None = Query(default=None, ge=0),
+    max_price: Decimal | None = Query(default=None, ge=0),
+    sort: str = Query(default="date", pattern="^(date|price)$"),
+):
+    venue = db.get(Venue, venue_id)
+    if not venue or not venue.is_active:
+        raise HTTPException(status_code=404, detail="Venue not found")
+    stmt = select(Event).where(
+        Event.venue_id == venue_id,
+        Event.status == "published",
+    ).options(joinedload(Event.city), joinedload(Event.category))
+    if category_id is not None:
+        stmt = stmt.where(Event.category_id == category_id)
+    events = db.scalars(stmt).unique().all()
+    result = []
+    for event in events:
+        sessions = db.scalars(
+            select(SessionEvent)
+            .join(VenueSpace, SessionEvent.venue_space_id == VenueSpace.id)
+            .where(
+                SessionEvent.event_id == event.id,
+                SessionEvent.status == "scheduled",
+                SessionEvent.starts_at >= datetime.now(),
+                VenueSpace.venue_id == venue_id,
+            ).order_by(SessionEvent.starts_at)
+        ).all()
+        sessions = [
+            session for session in sessions
+            if (from_date is None or session.starts_at >= from_date)
+            and (to_date is None or session.starts_at <= to_date)
+        ]
+        if not sessions:
+            continue
+        prices = []
+        for session in sessions:
+            prices.extend(db.scalars(select(TicketType.price).where(
+                TicketType.session_id == session.id, TicketType.is_active.is_(True)
+            )).all())
+        starting_price = min(prices) if prices else min(session.base_price for session in sessions)
+        if min_price is not None and starting_price < min_price:
+            continue
+        if max_price is not None and starting_price > max_price:
+            continue
+        result.append({
+            "id": event.id, "title": event.title, "description": event.description,
+            "event_type": event.event_type, "poster_url": event.poster_url,
+            "category": {"id": event.category.id, "name": event.category.name},
+            "city": {"id": event.city.id, "name": event.city.name},
+            "venue": {"id": venue.id, "name": venue.name, "address": venue.address, "venue_type": venue.venue_type},
+            "starts_at": sessions[0].starts_at, "starting_price": starting_price,
+            "availability": "upcoming",
+            "sessions": [{
+                "id": session.id, "starts_at": session.starts_at, "ends_at": session.ends_at,
+                "base_price": session.base_price, "tax_percent": session.tax_percent,
+                "convenience_fee": session.convenience_fee,
+            } for session in sessions],
+        })
+    result.sort(key=lambda item: item["starting_price"] if sort == "price" else item["starts_at"])
+    return result
 
 
 @router.get("/venues/{venue_id}/spaces")
@@ -157,6 +271,11 @@ def session_availability(session_id: int, db: DbSession):
         .where(Seat.venue_space_id == session.venue_space_id)
         .order_by(Seat.row_label, Seat.seat_number)
     ).all()
+    active_holds = db.scalars(select(ShowSeatHold).where(
+        ShowSeatHold.session_id == session_id,
+        ShowSeatHold.expires_at > datetime.now(),
+    )).all()
+    holds_by_seat = {hold.seat_id: hold for hold in active_holds}
     ticket_types = db.scalars(
         select(TicketType)
         .where(TicketType.session_id == session_id, TicketType.is_active.is_(True))
@@ -195,6 +314,8 @@ def session_availability(session_id: int, db: DbSession):
         "starts_at": session.starts_at,
         "ends_at": session.ends_at,
         "base_price": session.base_price,
+        "tax_percent": session.tax_percent,
+        "convenience_fee": session.convenience_fee,
         "status": session.status,
         "booking_mode": "seats" if session.movie_id is not None else "general_admission",
         "seats": [
@@ -203,7 +324,10 @@ def session_availability(session_id: int, db: DbSession):
                 "row_label": seat.row_label,
                 "seat_number": seat.seat_number,
                 "seat_type": seat.seat_type,
-                "available": seat.id not in booked_seat_ids,
+                "seat_category": seat.seat_category,
+                "price": _seat_price(db, session_id, seat, session.base_price),
+                "status": "booked" if seat.id in booked_seat_ids else ("locked" if seat.id in holds_by_seat else "available"),
+                "available": seat.id not in booked_seat_ids and seat.id not in holds_by_seat,
             }
             for seat in seats
         ],
