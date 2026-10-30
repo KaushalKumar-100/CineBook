@@ -543,6 +543,57 @@ def main() -> None:
                 ensure_ticket_type(db, session, "General Admission", "Standard event entry", row["price"], row["capacity"] * 3 // 4)
                 ensure_ticket_type(db, session, "Premium", "Premium event entry", row["premium"], max(1, row["capacity"] // 4))
 
+        # The poster supplied for this orchestra concert is marked "Event Closed".
+        # Create a clearly disclosed CineBook-only test session so the full booking
+        # journey can be exercised locally; this is not a real event date or venue.
+        philharmonic_category = ensure_category(
+            db, "Concerts", "Live concerts and classical music performances",
+        )
+        philharmonic_demo_venue = ensure_venue(
+            db, mumbai, "CineBook Demo Concert Hall", "auditorium",
+            "Demo-only venue address, Mumbai, Maharashtra",
+        )
+        philharmonic_demo_space = ensure_space(
+            db, philharmonic_demo_venue, "Main Hall", "hall", 140,
+        )
+        philharmonic_event = ensure_event(
+            db,
+            organizer=organizer,
+            city=mumbai,
+            category=philharmonic_category,
+            venue=philharmonic_demo_venue,
+            title="New Chamber St. Petersburg Philharmonic Orchestra",
+            description=(
+                "CINEBOOK TEST LISTING ONLY. The source poster supplied for this "
+                "concert marks the event as closed and does not publish an active "
+                "show schedule. This sample session, demo venue and INR ticket prices "
+                "are generated only to test CineBook's booking and checkout workflow. "
+                "They do not represent a real concert, organizer confirmation or "
+                "valid admission ticket. Programme poster: Yaroslav Zaboyarkin, "
+                "conductor; works by Britten, Borodin, Shostakovich, Verdi-Lovreglio, "
+                "Taneyev and Tchaikovsky."
+            ),
+            poster_url="/posters/concert-philharmonic.svg",
+        )
+        philharmonic_session = ensure_session_at(
+            db,
+            event=philharmonic_event,
+            space=philharmonic_demo_space,
+            starts_at=datetime(2026, 11, 21, 19, 0),
+            duration_minutes=90,
+            base_price=Decimal("499.00"),
+        )
+        ensure_ticket_type(
+            db, philharmonic_session, "General Admission",
+            "Demo-only concert admission; not valid for real entry",
+            Decimal("499.00"), 100,
+        )
+        ensure_ticket_type(
+            db, philharmonic_session, "Premium",
+            "Demo-only premium admission; not valid for real entry",
+            Decimal("799.00"), 40,
+        )
+
         # Add five more Indian metro cities to the searchable city directory.
         # These are city records only; do not invent venues or live showtimes.
         additional_cities = [
@@ -558,7 +609,8 @@ def main() -> None:
         db.commit()
         print("CineBook demo data is ready.")
         print("Created/verified: Guwahati cinema + 60 categorized seats, five movie listings,")
-        print("Bhumika theatre dates in Nagpur, and three Mumbai experience listings.")
+        print("Bhumika theatre dates in Nagpur, Mumbai experiences, and a clearly labelled")
+        print("Philharmonic concert test session (not a real event booking).")
         print("Added city directory entries: Delhi, Bengaluru, Hyderabad, Kolkata, and Pune.")
         print("All seeded showtimes, seat inventory and prices are demo values.")
         print(f"Organizer account: {organizer.email} (role: {organizer.role})")
