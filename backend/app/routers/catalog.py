@@ -218,6 +218,7 @@ def list_events(
             "poster_url": event.poster_url,
             "created_at": event.created_at,
             "updated_at": event.updated_at,
+            "starts_at": upcoming.starts_at if upcoming else None,
             "starting_price": upcoming.base_price if upcoming else None,
             "city": {
                 "id": event.city.id,
