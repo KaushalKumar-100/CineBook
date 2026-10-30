@@ -156,7 +156,28 @@ def list_movies(db: DbSession, q: str | None = Query(default=None, max_length=12
     stmt = select(Movie).where(Movie.is_active.is_(True)).order_by(Movie.title)
     if q:
         stmt = stmt.where(Movie.title.ilike(f"%{q}%"))
-    return db.scalars(stmt).all()
+    sessions = db.scalars(stmt).all()
+    result = []
+    for session in sessions:
+        space = session.venue_space
+        venue = space.venue if space else None
+        result.append({
+            "id": session.id,
+            "event_id": session.event_id,
+            "movie_id": session.movie_id,
+            "venue_space_id": session.venue_space_id,
+            "venue_space": {"id": space.id, "name": space.name} if space else None,
+            "venue": {
+                "id": venue.id, "name": venue.name, "address": venue.address,
+            } if venue else None,
+            "starts_at": session.starts_at,
+            "ends_at": session.ends_at,
+            "base_price": session.base_price,
+            "tax_percent": session.tax_percent,
+            "convenience_fee": session.convenience_fee,
+            "status": session.status,
+        })
+    return result
 
 
 @router.get("/events")
@@ -218,6 +239,7 @@ def list_events(
             "poster_url": event.poster_url,
             "created_at": event.created_at,
             "updated_at": event.updated_at,
+            "starting_price": upcoming.base_price if upcoming else None,
             "city": {
                 "id": event.city.id,
                 "name": event.city.name,
