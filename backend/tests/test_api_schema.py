@@ -92,6 +92,6 @@ def test_authenticated_seat_hold_routes_are_registered():
 
 
 def test_seat_hold_request_schema_limits_selection_size():
-    from app.schemas import SeatHoldCreate
-
-    assert SeatHoldCreate.model_fields["seat_ids"].metadata
+    seat_ids = app.openapi()["components"]["schemas"]["SeatHoldCreate"]["properties"]["seat_ids"]
+    assert seat_ids["minItems"] == 1
+    assert seat_ids["maxItems"] == 20
