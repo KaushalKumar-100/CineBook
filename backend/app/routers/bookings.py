@@ -8,7 +8,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.dependencies import DbSession, get_current_user
-from app.models import Booking, BookingItem, Event, Movie, Payment, Seat, SessionEvent, TicketType, User, VenueSpace
+from app.models import Booking, BookingItem, BookingTicket, Event, Movie, Payment, Seat, SessionEvent, TicketType, User, VenueSpace
 from app.schemas import BookingCreate, BookingOut, PaymentOut
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
@@ -46,7 +46,9 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
 
         booking = Booking(
             booking_reference=token_urlsafe(12).replace("-", "").replace("_", "").upper()[:22],
-            user_id=user.id, session_id=session.id, status="confirmed", total_amount=Decimal("0.00")
+            user_id=user.id, session_id=session.id, status="confirmed",
+            total_amount=Decimal("0.00"), subtotal_amount=Decimal("0.00"),
+            tax_amount=Decimal("0.00"), convenience_amount=Decimal("0.00"),
         )
         db.add(booking)
         db.flush()
@@ -67,8 +69,14 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
             if taken:
                 raise HTTPException(status_code=409, detail="One or more seats are already booked")
             for seat in seats:
-                db.add(BookingItem(booking_id=booking.id, seat_id=seat.id, quantity=1, unit_price=session.base_price))
-                total += session.base_price
+                configured_price = db.scalar(select(TicketType.price).where(
+                    TicketType.session_id == session.id,
+                    TicketType.name.ilike(seat.seat_category),
+                    TicketType.is_active.is_(True),
+                ).limit(1))
+                unit_price = configured_price if configured_price is not None else session.base_price
+                db.add(BookingItem(booking_id=booking.id, seat_id=seat.id, quantity=1, unit_price=unit_price))
+                total += unit_price
         else:
             ticket = db.scalar(select(TicketType).where(
                 TicketType.id == payload.ticket_type_id, TicketType.session_id == session.id,
@@ -87,9 +95,18 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
             db.add(BookingItem(booking_id=booking.id, ticket_type_id=ticket.id,
                                quantity=payload.quantity, unit_price=ticket.price))
 
-        booking.total_amount = total
-        # Demo-only payment; do not collect payment card details.
-        db.add(Payment(booking_id=booking.id, provider="demo", amount=total, status="succeeded"))
+        tax_amount = (total * (session.tax_percent or Decimal("0.00")) / Decimal("100.00")).quantize(Decimal("0.01"))
+        convenience_amount = session.convenience_fee or Decimal("0.00")
+        grand_total = total + tax_amount + convenience_amount
+        booking.subtotal_amount = total
+        booking.tax_amount = tax_amount
+        booking.convenience_amount = convenience_amount
+        booking.total_amount = grand_total
+        ticket_code = token_urlsafe(18).replace("-", "").replace("_", "").upper()[:32]
+        booking.ticket_code = ticket_code
+        db.add(BookingTicket(booking_id=booking.id, ticket_code=ticket_code))
+        # Demo-only payment confirmation. No card/UPI credentials are collected.
+        db.add(Payment(booking_id=booking.id, provider="demo", amount=grand_total, status="succeeded"))
         db.commit()
         db.refresh(booking)
         return booking
