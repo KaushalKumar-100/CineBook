@@ -386,3 +386,6 @@ img { color: transparent; }
   .ticket-qr-image{width:190px!important}
   .ticket-qr-download{display:none!important}
 }
+
+.event-type.poster-preview{color:#f0c98f;background:#2b2115e8;border-color:#d7aa6855}
+.streaming-only-note{display:block;margin-top:7px;color:#d8b68a;font-size:9px;letter-spacing:.2px}
