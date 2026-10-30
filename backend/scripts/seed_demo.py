@@ -97,7 +97,125 @@ def ensure_ticket_type(db, session: SessionEvent, name: str, description: str, p
             is_active=True,
         ))
         db.flush()
+    else:
+        existing.description = description
+        existing.price = price
+        existing.capacity = capacity
+        existing.is_active = True
+        db.flush()
 
+
+
+def ensure_movie(
+    db, *, title: str, synopsis: str, language: str, duration_minutes: int,
+    release_date: datetime, certificate: str, poster_url: str,
+) -> Movie:
+    movie = db.scalar(select(Movie).where(Movie.title == title))
+    if movie is None:
+        movie = Movie(title=title, is_active=True)
+        db.add(movie)
+        db.flush()
+    movie.synopsis = synopsis
+    movie.language = language
+    movie.duration_minutes = duration_minutes
+    movie.release_date = release_date
+    movie.certificate = certificate
+    movie.poster_url = poster_url
+    movie.is_active = True
+    db.flush()
+    return movie
+
+
+def ensure_event(
+    db, *, organizer: User, city: City, category: EventCategory, venue: Venue,
+    title: str, description: str, poster_url: str | None = None,
+) -> Event:
+    event = db.scalar(select(Event).where(Event.title == title))
+    if event is None:
+        event = Event(
+            organizer_id=organizer.id, city_id=city.id, category_id=category.id,
+            venue_id=venue.id, title=title, description=description,
+            event_type="major", status="published", poster_url=poster_url,
+        )
+        db.add(event)
+        db.flush()
+    else:
+        event.organizer_id = organizer.id
+        event.city_id = city.id
+        event.category_id = category.id
+        event.venue_id = venue.id
+        event.description = description
+        event.status = "published"
+        event.poster_url = poster_url
+    db.flush()
+    return event
+
+
+def ensure_session_at(
+    db, *, movie: Movie | None = None, event: Event | None = None,
+    space: VenueSpace, starts_at: datetime, duration_minutes: int,
+    base_price: Decimal,
+) -> SessionEvent:
+    session = db.scalar(select(SessionEvent).where(
+        SessionEvent.venue_space_id == space.id,
+        SessionEvent.movie_id == (movie.id if movie else None),
+        SessionEvent.event_id == (event.id if event else None),
+        SessionEvent.starts_at == starts_at,
+    ))
+    if session is None:
+        session = SessionEvent(
+            movie_id=movie.id if movie else None,
+            event_id=event.id if event else None,
+            venue_space_id=space.id,
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(minutes=duration_minutes),
+            base_price=base_price,
+            tax_percent=Decimal("18.00"),
+            convenience_fee=Decimal("25.00"),
+            status="scheduled",
+        )
+        db.add(session)
+        db.flush()
+    else:
+        session.ends_at = starts_at + timedelta(minutes=duration_minutes)
+        session.base_price = base_price
+        session.tax_percent = Decimal("18.00")
+        session.convenience_fee = Decimal("25.00")
+        session.status = "scheduled"
+    db.flush()
+    return session
+
+
+def ensure_cinema_seats(db, space: VenueSpace) -> None:
+    space.capacity = 60
+    for row in "ABCDEF":
+        category = "Standard" if row in "ABC" else ("Premium" if row in "DE" else "Recliner")
+        seat_type = {"Standard": "standard", "Premium": "premium", "Recliner": "recliner"}[category]
+        for number in range(1, 11):
+            seat = db.scalar(select(Seat).where(
+                Seat.venue_space_id == space.id,
+                Seat.row_label == row,
+                Seat.seat_number == number,
+            ))
+            if seat is None:
+                seat = Seat(
+                    venue_space_id=space.id,
+                    row_label=row,
+                    seat_number=number,
+                    seat_type=seat_type,
+                    seat_category=category,
+                )
+                db.add(seat)
+            else:
+                seat.seat_type = seat_type
+                seat.seat_category = category
+    db.flush()
+
+
+def ensure_session_prices(db, session: SessionEvent, *, standard: Decimal = Decimal("180.00")) -> None:
+    ensure_ticket_type(db, session, "Standard", "Standard cinema seat", standard, 30)
+    ensure_ticket_type(db, session, "Premium", "Premium cinema seat", Decimal("250.00"), 20)
+    ensure_ticket_type(db, session, "Recliner", "Recliner seat", Decimal("350.00"), 10)
 
 def main() -> None:
     settings = get_settings()
@@ -219,10 +337,204 @@ def main() -> None:
         workshop_session = ensure_future_session(db, event=workshop, space=local_space, price=99.00, days_ahead=14)
         ensure_ticket_type(db, workshop_session, "Student Pass", "Student admission", 99.00, 80)
 
+
+        # Replace fictional placeholder catalog rows with recognizable titles from
+        # the supplied posters. Session times, seats and prices below are local
+        # demonstration inventory, not live cinema/organizer availability.
+        placeholder_movie = db.scalar(select(Movie).where(Movie.title == "CineBook Sample Movie"))
+        if placeholder_movie:
+            placeholder_movie.is_active = False
+        for old_title in (
+            "Guwahati Riverfront Music Evening",
+            "Weekend Build and Learn Workshop",
+        ):
+            old_event = db.scalar(select(Event).where(Event.title == old_title))
+            if old_event:
+                old_event.status = "cancelled"
+
+        screen = ensure_space(db, cinema, "Screen 1", "screen", 60)
+        ensure_cinema_seats(db, screen)
+        movie_rows = [
+            {
+                "title": "Drishyam The Conclusion",
+                "synopsis": "The Salgaonkar family tries to protect the secret behind a past killing as new evidence and a determined Crime Branch officer threaten to reopen the case.",
+                "language": "Hindi",
+                "duration": 150,
+                "release": datetime(2026, 10, 2),
+                "certificate": "UA16+",
+                "poster": "https://imgix.hoyts.com.au/mx/posters/au/drishyam-the-conclusion-3d42e8ed.jpg",
+                "days": 1, "hour": 11,
+                "base": Decimal("180.00"),
+            },
+            {
+                "title": "Prahaar",
+                "synopsis": "Inspired by public prosecutor Ujjwal Nikam, the courtroom drama follows the legal battle after the 26/11 Mumbai attacks and the pursuit of justice against all odds.",
+                "language": "Hindi",
+                "duration": 141,
+                "release": datetime(2026, 10, 16),
+                "certificate": "UA16+",
+                "poster": "https://www.tribuneindia.com/sortd-service/imaginary/v22-01/jpg/large/high?url=dGhldHJpYnVuZS1zb3J0ZC1wcm8tcHJvZC1zb3J0ZC9tZWRpYTcwOTc4MjgwLTcwNzgtMTFmMS1hZmFlLTJkNzNlMTMwYzExYi5qcGc%3D",
+                "days": 1, "hour": 15,
+                "base": Decimal("180.00"),
+            },
+            {
+                "title": "Rajini: The Jailer 2",
+                "synopsis": "A retired jailer is pulled back into a dangerous underworld conflict when a new threat puts his family and the legacy he built at risk.",
+                "language": "Hindi",
+                "duration": 165,
+                "release": datetime(2026, 10, 15),
+                "certificate": "UA16+",
+                "poster": "https://m.media-amazon.com/images/M/MV5BYmE0MTFjOTYtMWYxNC00YjFjLTlhNzYtMWQ5ZDEwNjRmYzE1XkEyXkFqcGc%40._V1_.jpg",
+                "days": 2, "hour": 12,
+                "base": Decimal("180.00"),
+            },
+            {
+                "title": "Nayyi Navelli",
+                "synopsis": "A picture-perfect bride brings unexpected joy to a chaotic Meerut household, until her brother-in-law begins to suspect that their blessing may be a witch in disguise.",
+                "language": "Hindi",
+                "duration": 138,
+                "release": datetime(2026, 10, 16),
+                "certificate": "UA16+",
+                "poster": "https://m.media-amazon.com/images/M/MV5BZmJjYzUyMmYtNDgyNy00MzlkLWE1ZDAtZDFjNzgxYzQxOGY5XkEyXkFqcGc%40._V1_.jpg",
+                "days": 2, "hour": 16,
+                "base": Decimal("180.00"),
+            },
+            {
+                "title": "Namit Malhotra's Ramayana",
+                "synopsis": "The timeless story of Rama and Ravana returns as a large-scale cinematic retelling, following the epic conflict that has shaped generations.",
+                "language": "Hindi, Tamil, Telugu, Kannada",
+                "duration": 195,
+                "release": datetime(2026, 11, 5),
+                "certificate": "U",
+                "poster": "https://cf-img-a-in.tosshub.com/sites/visualstory/wp/2025/07/ramayanaITG-1751608352043.jpeg?size=%2A%3A900",
+                "days": 6, "hour": 10,
+                "base": Decimal("220.00"),
+            },
+        ]
+        for row in movie_rows:
+            movie = ensure_movie(
+                db, title=row["title"], synopsis=row["synopsis"],
+                language=row["language"], duration_minutes=row["duration"],
+                release_date=row["release"], certificate=row["certificate"],
+                poster_url=row["poster"],
+            )
+            starts_at = (datetime.now() + timedelta(days=row["days"])).replace(
+                hour=row["hour"], minute=0, second=0, microsecond=0,
+            )
+            movie_session = ensure_session_at(
+                db, movie=movie, space=screen, starts_at=starts_at,
+                duration_minutes=row["duration"], base_price=row["base"],
+            )
+            ensure_session_prices(db, movie_session)
+
+        # Theatre performance shown in the supplied Bhumika reference poster.
+        nagpur = ensure_city(db, "Nagpur", "Maharashtra")
+        theatre_category = ensure_category(db, "Theatre", "Stage plays and live performances")
+        bhumika_venue = ensure_venue(
+            db, nagpur, "Vasantrao Deshpande Hall", "auditorium",
+            "Civil Lines, Nagpur, Maharashtra",
+        )
+        bhumika_space = ensure_space(db, bhumika_venue, "Main Hall", "hall", 400)
+        bhumika = ensure_event(
+            db, organizer=organizer, city=nagpur, category=theatre_category,
+            venue=bhumika_venue, title="Bhumika",
+            description=(
+                "Marathi drama, approximately 2 hours 10 minutes. Actor Vivek Jayant, "
+                "played by Sachin Khedekar, encounters a dream role that challenges his "
+                "core and begins to transform him as he inhabits the character. "
+                "Age guidance in the supplied listing: 5 years and above. "
+                "CineBook preview schedule and ticket inventory; confirm with the organizer."
+            ),
+            poster_url="https://in.bmscdn.com/events/moviecard/ET00437976.jpg",
+        )
+        for day in (9, 16, 23, 29):
+            show_at = datetime(2026, 11, day, 11, 0)
+            if show_at > datetime.now():
+                play_session = ensure_session_at(
+                    db, event=bhumika, space=bhumika_space, starts_at=show_at,
+                    duration_minutes=130, base_price=Decimal("300.00"),
+                )
+                ensure_ticket_type(db, play_session, "Regular", "Standard theatre admission", Decimal("300.00"), 200)
+                ensure_ticket_type(db, play_session, "Premium", "Premium theatre admission", Decimal("450.00"), 120)
+                ensure_ticket_type(db, play_session, "VIP", "Front section admission", Decimal("650.00"), 80)
+
+        # A small Mumbai selection based on the BookMyShow events page supplied
+        # as a reference. Dates/remaining inventory are seeded demo values.
+        mumbai = ensure_city(db, "Mumbai", "Maharashtra")
+        music_category = ensure_category(db, "Music Shows", "Live concerts and music performances")
+        comedy_category = ensure_category(db, "Comedy Shows", "Stand-up comedy and live humour")
+        experience_category = ensure_category(db, "Experiences", "Immersive and interactive experiences")
+        mumbai_rows = [
+            {
+                "title": "The Messi Experience: A Dream Come True",
+                "category": experience_category,
+                "venue_name": "The Messi Experience, Century Mills",
+                "venue_address": "Century Mills, Lower Parel, Mumbai, Maharashtra",
+                "venue_type": "convention_center",
+                "space_name": "Experience Floor",
+                "space_type": "open_area",
+                "capacity": 400,
+                "date": datetime(2026, 11, 7, 10, 0),
+                "duration": 180,
+                "price": Decimal("999.00"),
+                "premium": Decimal("1499.00"),
+                "description": "An immersive football experience celebrating Lionel Messi's career through interactive exhibits and fan-focused installations. Preview schedule and prices are for CineBook testing.",
+            },
+            {
+                "title": "Papa Yaar by Zakir Khan",
+                "category": comedy_category,
+                "venue_name": "DOME, SVP Stadium",
+                "venue_address": "DOME, SVP Stadium, Worli, Mumbai, Maharashtra",
+                "venue_type": "auditorium",
+                "space_name": "Main Arena",
+                "space_type": "hall",
+                "capacity": 600,
+                "date": datetime(2026, 11, 14, 20, 0),
+                "duration": 120,
+                "price": Decimal("1299.00"),
+                "premium": Decimal("1999.00"),
+                "description": "A live stand-up evening with Zakir Khan, built around observational humour, family stories and everyday relationships. Preview schedule and prices are for CineBook testing.",
+            },
+            {
+                "title": "CALVIN HARRIS - Live in Mumbai",
+                "category": music_category,
+                "venue_name": "Infinity Bay Sewri",
+                "venue_address": "Infinity Bay, Sewri, Mumbai, Maharashtra",
+                "venue_type": "open_ground",
+                "space_name": "Concert Ground",
+                "space_type": "open_area",
+                "capacity": 1200,
+                "date": datetime(2026, 12, 12, 18, 30),
+                "duration": 210,
+                "price": Decimal("3500.00"),
+                "premium": Decimal("5500.00"),
+                "description": "A large-scale electronic music night featuring DJ and producer Calvin Harris in Mumbai. Preview schedule and prices are for CineBook testing.",
+            },
+        ]
+        for row in mumbai_rows:
+            venue = ensure_venue(
+                db, mumbai, row["venue_name"], row["venue_type"], row["venue_address"],
+            )
+            space = ensure_space(
+                db, venue, row["space_name"], row["space_type"], row["capacity"],
+            )
+            event = ensure_event(
+                db, organizer=organizer, city=mumbai, category=row["category"],
+                venue=venue, title=row["title"], description=row["description"],
+            )
+            if row["date"] > datetime.now():
+                session = ensure_session_at(
+                    db, event=event, space=space, starts_at=row["date"],
+                    duration_minutes=row["duration"], base_price=row["price"],
+                )
+                ensure_ticket_type(db, session, "General Admission", "Standard event entry", row["price"], row["capacity"] * 3 // 4)
+                ensure_ticket_type(db, session, "Premium", "Premium event entry", row["premium"], max(1, row["capacity"] // 4))
+
         db.commit()
         print("CineBook demo data is ready.")
-        print("Created/verified: Guwahati and Tezpur, demo cinema + 40 seats, one sample movie,")
-        print("one major concert, one local workshop, sessions, and ticket types.")
+        print("Created/verified: Guwahati cinema + 60 categorized seats, five movie listings,")
+        print("Bhumika theatre dates in Nagpur, and three Mumbai experience listings.")
+        print("All seeded showtimes, seat inventory and prices are demo values.")
         print(f"Organizer account: {organizer.email} (role: {organizer.role})")
         print("Restart the API if it is already running, then refresh the frontend.")
     except SQLAlchemyError:
