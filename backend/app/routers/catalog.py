@@ -24,6 +24,69 @@ def list_venues(db: DbSession, city_id: int | None = None):
     return db.scalars(stmt).unique().all()
 
 
+@router.get("/venues/{venue_id}")
+def venue_detail(venue_id: int, db: DbSession):
+    venue = db.scalar(
+        select(Venue)
+        .where(Venue.id == venue_id, Venue.is_active.is_(True))
+        .options(joinedload(Venue.city))
+    )
+    if not venue:
+        raise HTTPException(status_code=404, detail="Venue not found")
+    spaces = db.scalars(
+        select(VenueSpace)
+        .where(VenueSpace.venue_id == venue_id)
+        .order_by(VenueSpace.name)
+    ).all()
+    return {
+        "id": venue.id,
+        "city_id": venue.city_id,
+        "name": venue.name,
+        "venue_type": venue.venue_type,
+        "address": venue.address,
+        "contact_number": venue.contact_number,
+        "is_active": venue.is_active,
+        "city": {
+            "id": venue.city.id,
+            "name": venue.city.name,
+            "state": venue.city.state,
+            "country": venue.city.country,
+        },
+        "spaces": [
+            {
+                "id": space.id,
+                "name": space.name,
+                "space_type": space.space_type,
+                "capacity": space.capacity,
+            }
+            for space in spaces
+        ],
+    }
+
+
+@router.get("/venues/{venue_id}/events")
+def venue_events(
+    venue_id: int,
+    db: DbSession,
+    category_id: int | None = None,
+    sort: str = Query(default="date", pattern="^(date|title)$"),
+):
+    venue = db.scalar(select(Venue).where(
+        Venue.id == venue_id, Venue.is_active.is_(True)
+    ))
+    if not venue:
+        raise HTTPException(status_code=404, detail="Venue not found")
+    stmt = (
+        select(Event)
+        .where(Event.venue_id == venue_id, Event.status == "published")
+        .options(joinedload(Event.city), joinedload(Event.category))
+    )
+    if category_id is not None:
+        stmt = stmt.where(Event.category_id == category_id)
+    stmt = stmt.order_by(Event.title if sort == "title" else Event.created_at.desc())
+    return db.scalars(stmt).unique().all()
+
+
 @router.get("/venues/{venue_id}/spaces")
 def venue_spaces(venue_id: int, db: DbSession):
     if not db.get(Venue, venue_id):
