@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.dependencies import DbSession, require_roles
-from app.models import City, Event, EventCategory, Movie, Seat, SessionEvent, TicketType, User, Venue, VenueSpace
+from app.models import City, Event, EventCategory, Movie, Notification, Seat, SessionEvent, TicketType, User, Venue, VenueSpace
 from app.schemas import CategoryCreate, CityCreate, EventCreate, MovieCreate, SessionCreate, TicketTypeCreate, VenueCreate, VenueSpaceCreate
 
 router = APIRouter(prefix="/manage", tags=["Organizer and Admin"])
@@ -72,8 +72,8 @@ def create_ticket_type(payload: TicketTypeCreate, db: DbSession, user: Annotated
         raise HTTPException(status_code=404, detail="Session not found")
     if user.role == "organizer" and session.event and session.event.organizer_id != user.id:
         raise HTTPException(status_code=403, detail="Not your event")
-    if session.movie_id is not None:
-        raise HTTPException(status_code=422, detail="Cinema sessions use numbered seats; ticket types are for general-admission events")
+    if session.booking_mode == "assigned":
+        raise HTTPException(status_code=422, detail="Assigned-seat sessions use the venue seat layout, not general-admission ticket types")
     sold_capacity = db.scalar(select(func.coalesce(func.sum(TicketType.capacity), 0)).where(TicketType.session_id == session.id)) or 0
     if sold_capacity + payload.capacity > session.venue_space.capacity:
         raise HTTPException(status_code=422, detail="Combined ticket-type capacity cannot exceed venue capacity")
@@ -122,6 +122,7 @@ def create_event(payload: EventCreate, db: DbSession, user: Annotated[User, Depe
         raise HTTPException(status_code=404, detail="Event category not found")
     event_data = payload.model_dump()
     event_data["poster_url"] = str(payload.poster_url) if payload.poster_url else None
+    event_data["status"] = "draft"
     item = Event(**event_data)
     db.add(item)
     return save(db, item)
@@ -134,9 +135,23 @@ def publish_event(event_id: int, db: DbSession, user: Annotated[User, Depends(re
         raise HTTPException(status_code=404, detail="Event not found")
     if user.role == "organizer" and item.organizer_id != user.id:
         raise HTTPException(status_code=403, detail="Not your event")
-    if not db.scalar(select(SessionEvent.id).where(SessionEvent.event_id == event_id)):
-        raise HTTPException(status_code=409, detail="Add at least one scheduled session before publishing")
-    item.status = "published"
+    if not db.scalar(select(SessionEvent.id).where(
+        SessionEvent.event_id == event_id,
+        SessionEvent.status == "scheduled",
+        SessionEvent.starts_at > func.now(),
+    )):
+        raise HTTPException(status_code=409, detail="Add at least one future scheduled session before publishing")
+    if user.role == "organizer":
+        item.status = "pending_approval"
+        admins = db.scalars(select(User).where(User.role == "admin", User.is_active.is_(True))).all()
+        for admin in admins:
+            db.add(Notification(
+                user_id=admin.id, title="Event requires review",
+                message=f"{item.title} was submitted by {user.name}.",
+                kind="moderation", link="/portal",
+            ))
+    else:
+        item.status = "published"
     db.commit()
     db.refresh(item)
     return item
@@ -162,6 +177,13 @@ def create_session(payload: SessionCreate, db: DbSession, user: Annotated[User, 
         raise HTTPException(status_code=422, detail="Event sessions must use a space belonging to the event venue")
     if payload.movie_id and space.space_type != "screen":
         raise HTTPException(status_code=422, detail="Movie shows must be scheduled in a cinema screen")
-    item = SessionEvent(**payload.model_dump())
+    session_data = payload.model_dump()
+    if payload.movie_id is not None:
+        session_data["booking_mode"] = "assigned"
+    if session_data["booking_mode"] == "assigned":
+        seat_count = db.scalar(select(func.count(Seat.id)).where(Seat.venue_space_id == space.id)) or 0
+        if seat_count == 0:
+            raise HTTPException(status_code=409, detail="Create the venue seat layout before scheduling an assigned-seat session")
+    item = SessionEvent(**session_data)
     db.add(item)
     return save(db, item)

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 350" role="img" aria-labelledby="title desc">
+<title id="title">Saturday Concerts — Hamilton Cocktail Bar</title>
+<desc id="desc">Archived red rock concert poster featuring a live crowd and stage lighting.</desc>
+<defs>
+ <linearGradient id="red" x2="0" y2="1"><stop stop-color="#220607"/><stop offset=".45" stop-color="#8f1118"/><stop offset="1" stop-color="#10090b"/></linearGradient>
+ <radialGradient id="beam"><stop stop-color="#ffb5a2" stop-opacity=".6"/><stop offset="1" stop-color="#ffb5a2" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="700" height="350" fill="url(#red)"/>
+<ellipse cx="350" cy="145" rx="320" ry="220" fill="url(#beam)"/>
+<g stroke="#fff2df" stroke-opacity=".35" stroke-width="3">
+ <path d="M90 0l90 170M610 0L520 170M350 0v100M0 80l170 90M700 80L530 170"/>
+</g>
+<text x="350" y="55" text-anchor="middle" fill="#f2d7b3" font-family="Georgia,serif" font-size="14" letter-spacing="3">HAMILTON COCKTAIL BAR</text>
+<text x="350" y="160" text-anchor="middle" fill="#fff0d4" font-family="Georgia,serif" font-size="61" letter-spacing="4">SATURDAY</text>
+<text x="350" y="225" text-anchor="middle" fill="#fff0d4" font-family="Georgia,serif" font-size="66" font-weight="bold" letter-spacing="2">CONCERTS</text>
+<g fill="#09070a">
+ <path d="M0 350V265l25-35 10 40 15-57 10 55 22-35 7 62 18-82 17 50 15-38 10 78 25-55 9 57 25-84 10 84 18-42 18 57 25-67 12 55 19-87 16 87 19-60 14 56 18-78 18 78 17-58 14 70 20-82 16 75 20-55 18 55 15-65 21 65 17-42 18 56 17-73 18 73 22-56 18 50 18-81 21 81 22-66 17 66 16-44 17 50 18-76 17 76 24-60 20 62 20-46 30 70v85z"/>
+ <path d="M80 260l-10-55 10-28 10 28-3 55M215 270l-10-75 10-26 11 26-4 75M470 265l-9-80 10-28 10 28-4 80M590 260l-8-60 9-25 10 25-4 60" />
+</g>
+<path d="M40 292h620" stroke="#fb9489" stroke-opacity=".5" stroke-width="2"/>
+<text x="350" y="318" text-anchor="middle" fill="#ffd5c7" font-family="Arial,sans-serif" font-size="11" letter-spacing="2">ROCK · ENGLISH · 21+ · ARCHIVED · EVENT CLOSED</text>
+</svg>

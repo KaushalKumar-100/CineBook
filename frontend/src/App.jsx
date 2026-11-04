@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import PortalDashboard from "./PortalDashboard";
 import {
 
   Search, MapPin, Ticket, CalendarDays, Film, Music2, Laugh,
@@ -8,26 +8,79 @@ import {
 } from "lucide-react";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+// Place the real merchant payment QR image at frontend/public/payment-qr.png.
+const PAYMENT_QR_IMAGE_URL = "/payment-qr.png";
 
 const demoMovies = [
-  { id: "dm1", title: "The Last Horizon", language: "English", duration_minutes: 128, synopsis: "An unforgettable journey beyond the edge of the known world.", poster_url: "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?auto=format&fit=crop&w=800&q=85", demo: true },
-  { id: "dm2", title: "Midnight in Mumbai", language: "Hindi", duration_minutes: 142, synopsis: "One city. One night. A thousand untold stories.", poster_url: "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=800&q=85", demo: true },
-  { id: "dm3", title: "Echoes of Tomorrow", language: "English", duration_minutes: 116, synopsis: "A scientist discovers that tomorrow is closer than it seems.", poster_url: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=85", demo: true },
-  { id: "dm4", title: "The Blue Hour", language: "Hindi", duration_minutes: 104, synopsis: "A small-town musician gets one chance to change everything.", poster_url: "https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=800&q=85", demo: true }
+  { id: "dm1", title: "Drishyam The Conclusion", language: "Hindi", duration_minutes: 150, certificate: "UA16+", synopsis: "The Salgaonkar family tries to protect the secret behind a past killing as new evidence and a determined Crime Branch officer threaten to reopen the case.", poster_url: "https://imgix.hoyts.com.au/mx/posters/au/drishyam-the-conclusion-3d42e8ed.jpg", release_date: "2026-10-02", demo: true },
+  { id: "dm2", title: "Prahaar", language: "Hindi", duration_minutes: 141, certificate: "UA16+", synopsis: "Inspired by public prosecutor Ujjwal Nikam, the courtroom drama follows the legal battle after the 26/11 Mumbai attacks and the pursuit of justice against all odds.", poster_url: "https://www.tribuneindia.com/sortd-service/imaginary/v22-01/jpg/large/high?url=dGhldHJpYnVuZS1zb3J0ZC1wcm8tcHJvZC1zb3J0ZC9tZWRpYTcwOTc4MjgwLTcwNzgtMTFmMS1hZmFlLTJkNzNlMTMwYzExYi5qcGc%3D", release_date: "2026-10-16", demo: true },
+  { id: "dm3", title: "Rajini: The Jailer 2", language: "Hindi", duration_minutes: 165, certificate: "UA16+", synopsis: "A retired jailer is pulled back into a dangerous underworld conflict when a new threat puts his family and the legacy he built at risk.", poster_url: "https://m.media-amazon.com/images/M/MV5BYmE0MTFjOTYtMWYxNC00YjFjLTlhNzYtMWQ5ZDEwNjRmYzE1XkEyXkFqcGc%40._V1_.jpg", release_date: "2026-10-15", demo: true },
+  { id: "dm4", title: "Nayyi Navelli", language: "Hindi", duration_minutes: 138, certificate: "UA16+", synopsis: "A picture-perfect bride brings unexpected joy to a chaotic Meerut household, until her brother-in-law begins to suspect that their blessing may be a witch in disguise.", poster_url: "https://m.media-amazon.com/images/M/MV5BZmJjYzUyMmYtNDgyNy00MzlkLWE1ZDAtZDFjNzgxYzQxOGY5XkEyXkFqcGc%40._V1_.jpg", release_date: "2026-10-16", demo: true },
+  { id: "dm5", title: "Namit Malhotra's Ramayana", language: "Hindi, Tamil, Telugu, Kannada", duration_minutes: 195, certificate: "U", synopsis: "The timeless story of Rama and Ravana returns as a large-scale cinematic retelling, following the epic conflict that has shaped generations.", poster_url: "https://cf-img-a-in.tosshub.com/sites/visualstory/wp/2025/07/ramayanaITG-1751608352043.jpeg?size=%2A%3A900", release_date: "2026-11-05", demo: true },
+  { id: "dm6", title: "Blue (2026)", language: "Italian", duration_minutes: 87, certificate: "A", synopsis: "An Italian-language romantic thriller. The supplied listing presents it as a streaming title with rent and buy options; CineBook includes it as a catalogue preview, not a cinema booking.", poster_url: "/posters/cinema.svg", release_date: "2026-10-16", streaming_only: true, demo: true },
 ];
 
 const demoEvents = [
-  { id: "de1", title: "Guwahati Riverfront Music Fest", event_type: "major", city: { name: "Guwahati" }, venue: { name: "Brahmaputra Riverside Grounds" }, category: { name: "Concert" }, starts_at: "2026-12-12T17:30:00", poster_url: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=900&q=85", description: "An open-air night of live music on the Brahmaputra.", demo: true },
-  { id: "de2", title: "Campus Creators Day", event_type: "local", city: { name: "Tezpur" }, venue: { name: "University Auditorium" }, category: { name: "College Fest" }, starts_at: "2026-11-18T10:00:00", poster_url: "https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=900&q=85", description: "Student showcases, clubs, workshops, and performances.", demo: true },
-  { id: "de3", title: "Stand-up by the River", event_type: "local", city: { name: "Guwahati" }, venue: { name: "The Laugh Room" }, category: { name: "Comedy" }, starts_at: "2026-11-21T19:00:00", poster_url: "https://images.unsplash.com/photo-1585699324551-f6c309eedeca?auto=format&fit=crop&w=900&q=85", description: "A local comedy line-up for your weekend plans.", demo: true },
-  { id: "de4", title: "Build with AI: Weekend Workshop", event_type: "local", city: { name: "Guwahati" }, venue: { name: "Innovation Studio" }, category: { name: "Workshop" }, starts_at: "2026-11-28T11:00:00", poster_url: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=85", description: "A practical, beginner-friendly build day for curious minds.", demo: true }
+  { id: "de1", title: "Bhumika", event_type: "local", city: { name: "Nagpur" }, venue: { name: "Vasantrao Deshpande Hall" }, category: { name: "Theatre" }, starts_at: "2026-11-09T11:00:00", poster_url: "https://in.bmscdn.com/events/moviecard/ET00437976.jpg", description: "Marathi drama, approximately 2 hours 10 minutes. Actor Vivek Jayant, played by Sachin Khedekar, encounters a dream role that challenges his core and begins to transform him as he inhabits the character. Age guidance: 5 years and above.", starting_price: 300, demo: true },
+  { id: "de2", title: "The Messi Experience: A Dream Come True", event_type: "major", city: { name: "Mumbai" }, venue: { name: "Century Mills, Lower Parel" }, category: { name: "Experiences" }, starts_at: "2026-11-07T10:00:00", poster_url: "/posters/experience.svg", description: "An immersive football experience celebrating Lionel Messi's career through interactive exhibits and fan-focused installations.", starting_price: 999, demo: true },
+  { id: "de3", title: "Papa Yaar by Zakir Khan", event_type: "major", city: { name: "Mumbai" }, venue: { name: "DOME, SVP Stadium" }, category: { name: "Comedy Shows" }, starts_at: "2026-11-14T20:00:00", poster_url: "/posters/comedy.svg", description: "A live stand-up evening built around observational humour, family stories and everyday relationships.", starting_price: 1299, demo: true },
+  { id: "de4", title: "CALVIN HARRIS - Live in Mumbai", event_type: "major", city: { name: "Mumbai" }, venue: { name: "Infinity Bay, Sewri" }, category: { name: "Music Shows" }, starts_at: "2026-12-12T18:30:00", poster_url: "/posters/concert.svg", description: "A large-scale electronic music night featuring DJ and producer Calvin Harris in Mumbai.", starting_price: 3500, demo: true }
+];
+
+
+
+const concertPosterPreviews = [
+  {
+    id: "concert-preview-philharmonic",
+    title: "New Chamber St. Petersburg Philharmonic Orchestra",
+    event_type: "major",
+    city: { name: "Mumbai" },
+    venue: { name: "NCPA / Prithvi Theatre (poster reference)" },
+    category: { name: "Concerts" },
+    poster_url: "/posters/concert-philharmonic.svg",
+    description: "Western classical concert with conductor Yaroslav Zaboyarkin. The poster lists works by Britten, Borodin, Shostakovich, Verdi-Lovreglio, Taneyev and Tchaikovsky. It shows the event as closed; no current show date or ticket availability is being advertised.",
+    duration_minutes: 90,
+    age_limit: "6+",
+    demo: true,
+    poster_preview: true,
+  },
+  {
+    id: "concert-preview-winter-choir",
+    title: "Winter Concert — Delhi Chamber Choir",
+    event_type: "local",
+    city: { name: "Delhi" },
+    venue: { name: "Venue not specified on poster" },
+    category: { name: "Concerts" },
+    poster_url: "/posters/concert-winter-choir.svg",
+    description: "Delhi Chamber Choir presents a Western classical winter programme conducted by Nadezda Balyan, with English, Latin and Hindi repertoire. The poster refers to Winter Concert 2025 and marks the event closed; no current booking is available.",
+    duration_minutes: 60,
+    age_limit: "10+",
+    demo: true,
+    poster_preview: true,
+  },
+  {
+    id: "concert-preview-saturday",
+    title: "Saturday Concerts",
+    event_type: "major",
+    city: { name: "City to be confirmed" },
+    venue: { name: "Hamilton Cocktail Bar" },
+    category: { name: "Concerts" },
+    poster_url: "/posters/concert-saturday.svg",
+    description: "Rock music event poster for Hamilton Cocktail Bar. The poster lists English-language music and a 21+ age limit, and shows the event closed. City, date and current ticket availability are not specified.",
+    duration_minutes: 210,
+    age_limit: "21+",
+    demo: true,
+    poster_preview: true,
+  },
 ];
 
 const categories = [
-  { name: "Concerts", icon: Music2, filter: "Concert" },
-  { name: "Comedy", icon: Laugh, filter: "Comedy" },
-  { name: "College fests", icon: GraduationCap, filter: "College Fest" },
-  { name: "Workshops", icon: Sparkles, filter: "Workshop" },
+  { name: "Concerts", icon: Music2, filter: "Concert", poster: "/posters/concert.svg" },
+  { name: "Comedy", icon: Laugh, filter: "Comedy", poster: "/posters/comedy.svg" },
+  { name: "College fests", icon: GraduationCap, filter: "College Fest", poster: "/posters/college-fest.svg" },
+  { name: "Workshops", icon: Sparkles, filter: "Workshop", poster: "/posters/workshop.svg" },
+  { name: "Theatre", icon: Film, filter: "Theatre", poster: "/posters/experience.svg" },
+  { name: "Experiences", icon: Sparkles, filter: "Experiences", poster: "/posters/experience.svg" },
 ];
 
 function prettyDate(value) {
@@ -43,28 +96,59 @@ function prettyTime(value) {
   return new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit" }).format(date);
 }
 
-function ImageOrFallback({ src, alt, className = "" }) {
+function getCategoryPoster(item) {
+  const category = String(item?.category?.name || item?.event_type || "").toLowerCase();
+  if (category.includes("concert") || category.includes("music") || category.includes("major")) return "/posters/concert.svg";
+  if (category.includes("comedy")) return "/posters/comedy.svg";
+  if (category.includes("college") || category.includes("fest") || category.includes("campus")) return "/posters/college-fest.svg";
+  if (category.includes("workshop") || category.includes("education") || category.includes("tech")) return "/posters/workshop.svg";
+  if (item?.duration_minutes || item?.language || item?.synopsis) return "/posters/cinema.svg";
+  return "/posters/experience.svg";
+}
+
+function ImageOrFallback({ src, alt, className = "", fallbackSrc = "/posters/experience.svg" }) {
   const [failed, setFailed] = useState(false);
-  if (!src || failed) return <div className={`image-fallback ${className}`} aria-label={alt}><Film size={30} /><span>CineBook</span></div>;
-  return <img className={className} src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />;
+  const [fallbackFailed, setFallbackFailed] = useState(false);
+  useEffect(() => {
+    setFailed(false);
+    setFallbackFailed(false);
+  }, [src, fallbackSrc]);
+
+  if ((!src || failed) && fallbackFailed) {
+    return <div className={`image-fallback ${className}`} role="img" aria-label={alt}><Film size={30} /><span>CineBook</span></div>;
+  }
+  const imageSrc = !src || failed ? fallbackSrc : src;
+  return (
+    <img
+      className={className}
+      src={imageSrc}
+      alt={alt || "CineBook poster"}
+      loading="lazy"
+      decoding="async"
+      onError={() => {
+        if (src && !failed) setFailed(true);
+        else setFallbackFailed(true);
+      }}
+    />
+  );
 }
 
 function EventCard({ item, saved, onSave, onBook }) {
   return (
     <article className="event-card">
       <div className="event-poster-wrap">
-        <ImageOrFallback src={item.poster_url} alt={item.title} className="event-poster" />
-        <span className={`event-type ${item.event_type === "major" ? "major" : ""}`}>{item.event_type === "major" ? "FEATURED" : "LOCAL PICK"}</span>
+        <ImageOrFallback src={item.poster_url} fallbackSrc={getCategoryPoster(item)} alt={item.title} className="event-poster" />
+        <span className={`event-type ${item.event_type === "major" ? "major" : ""} ${item.poster_preview ? "poster-preview" : ""}`}>{item.poster_preview ? "POSTER PREVIEW" : item.event_type === "major" ? "FEATURED" : "LOCAL PICK"}</span>
         <button className={`icon-button save-button ${saved ? "is-saved" : ""}`} onClick={() => onSave(item.id)} aria-label={saved ? "Unsave event" : "Save event"}><Heart size={17} fill={saved ? "currentColor" : "none"} /></button>
       </div>
       <div className="event-card-body">
         <p className="eyebrow">{item.category?.name || "Experience"} <span>·</span> {item.city?.name || "Your city"}</p>
         <h3>{item.title}</h3>
         <p className="event-description">{item.description || "Discover something worth stepping out for."}</p>
-        <div className="event-meta"><span><CalendarDays size={15} />{prettyDate(item.starts_at || item.start_time)}</span><span><Clock3 size={15} />{prettyTime(item.starts_at || item.start_time)}</span></div>
+        <div className="event-meta">{item.poster_preview ? <span>Archived poster · Event closed</span> : <><span><CalendarDays size={15} />{prettyDate(item.starts_at || item.start_time)}</span><span><Clock3 size={15} />{prettyTime(item.starts_at || item.start_time)}</span>{item.starting_price != null && <span>From ₹{Number(item.starting_price).toFixed(0)}</span>}</>}</div>
         <div className="event-card-footer">
           <span className="venue-label"><MapPin size={14} />{item.venue?.name || "Venue details soon"}</span>
-          <button className="text-button" onClick={() => onBook(item)}>Explore <ChevronRight size={16} /></button>
+          <button className="text-button" onClick={() => onBook(item)}>{item.poster_preview ? "View poster" : "Explore"} <ChevronRight size={16} /></button>
         </div>
       </div>
     </article>
@@ -75,17 +159,60 @@ function MovieCard({ item, onBook }) {
   return (
     <article className="movie-card">
       <button className="poster-click" onClick={() => onBook(item)} aria-label={`Explore ${item.title}`}>
-        <ImageOrFallback src={item.poster_url} alt={item.title} className="movie-poster" />
-        <span className="poster-overlay"><span>View showtimes <ArrowUpRight size={16} /></span></span>
+        <ImageOrFallback src={item.poster_url} fallbackSrc="/posters/cinema.svg" alt={item.title} className="movie-poster" />
+        <span className="poster-overlay"><span>{item.streaming_only ? "Streaming details" : item.demo ? "View movie details" : "View showtimes"} <ArrowUpRight size={16} /></span></span>
       </button>
-      <div className="movie-info"><h3>{item.title}</h3><p>{item.language || "Language TBA"} <span>·</span> {item.duration_minutes ? `${item.duration_minutes} min` : "Duration TBA"}</p></div>
+      <div className="movie-info"><h3>{item.title}</h3><p>{item.language || "Language TBA"} <span>·</span> {item.duration_minutes ? `${item.duration_minutes} min` : "Duration TBA"}{item.certificate ? ` · ${item.certificate}` : ""}{item.release_date ? ` · ${prettyDate(item.release_date)}` : ""}</p>{item.streaming_only && <small className="streaming-only-note">Streaming preview · no cinema showtimes</small>}</div>
     </article>
   );
 }
 
+function VenueBrowser({ apiBase, cityId, cityName, onChooseEvent }) {
+  const [query, setQuery] = useState("");
+  const [venues, setVenues] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [selectedVenue, setSelectedVenue] = useState(null);
+  const [venueEvents, setVenueEvents] = useState([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsError, setEventsError] = useState("");
+  useEffect(() => {
+    if (!cityId) { setVenues([]); return; }
+    const controller = new AbortController();
+    setLoading(true); setError("");
+    fetch(`${apiBase}/api/v1/venues?city_id=${encodeURIComponent(cityId)}`, { signal: controller.signal })
+      .then(async (response) => { const data = await response.json().catch(() => []); if (!response.ok) throw new Error(data.detail || "Could not load venues."); return data; })
+      .then((data) => setVenues(Array.isArray(data) ? data : []))
+      .catch((failure) => { if (failure.name !== "AbortError") setError(failure.message || "Could not load venues."); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [apiBase, cityId]);
+  useEffect(() => {
+    if (!selectedVenue) { setVenueEvents([]); return; }
+    const controller = new AbortController();
+    setEventsLoading(true); setEventsError("");
+    fetch(`${apiBase}/api/v1/venues/${selectedVenue.id}/events`, { signal: controller.signal })
+      .then(async (response) => { const data = await response.json().catch(() => []); if (!response.ok) throw new Error(data.detail || "Could not load venue events."); return data; })
+      .then((data) => setVenueEvents(Array.isArray(data) ? data : []))
+      .catch((failure) => { if (failure.name !== "AbortError") setEventsError(failure.message || "Could not load venue events."); })
+      .finally(() => { if (!controller.signal.aborted) setEventsLoading(false); });
+    return () => controller.abort();
+  }, [apiBase, selectedVenue]);
+  if (!cityId) return <section className="venue-discovery"><div className="section-header"><div><span className="mini-label">DISCOVER BY LOCATION</span><h2>Choose a <em>city first.</em></h2><p>Select a database location from the city selector above to explore registered venues.</p></div></div></section>;
+  return (
+    <section className="venue-discovery" id="venue-discovery">
+      <div className="section-header"><div><span className="mini-label">DISCOVER BY LOCATION</span><h2>{selectedVenue ? selectedVenue.name : `Venues in ${cityName}`} <em>{selectedVenue ? "events." : "await."}</em></h2><p>{selectedVenue ? selectedVenue.address : "Browse the venues registered in your selected city."}</p></div>
+      <label className="venue-search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter venues" aria-label="Filter venues" /></label></div>
+      {selectedVenue && <button className="text-button venue-back" onClick={() => setSelectedVenue(null)}>← Back to all venues</button>}
+      {!selectedVenue && (loading ? <div className="loading-state"><RefreshCw className="spin" size={22} /> Loading venues...</div> : error ? <div className="empty-state"><p>{error}</p></div> : <div className="venue-grid">{venues.filter((venue) => `${venue.name} ${venue.venue_type} ${venue.address}`.toLowerCase().includes(query.toLowerCase())).map((venue) => <button type="button" className="venue-card" key={venue.id} onClick={() => { setSelectedVenue(venue); setQuery(""); }}><div className="venue-card-mark"><MapPin size={24} /></div><div><span className="eyebrow">{String(venue.venue_type || "venue").replaceAll("_", " ")}</span><h3>{venue.name}</h3><p>{venue.address}</p><small>{venue.capacity || 0} capacity · {venue.spaces?.length || 0} spaces</small></div><ChevronRight size={19} /></button>)}{venues.length === 0 && <div className="empty-state"><h3>No registered venues in {cityName}</h3><p>Ask an administrator to add a venue and its seating spaces.</p></div>}</div>)}
+      {selectedVenue && (eventsLoading ? <div className="loading-state"><RefreshCw className="spin" size={22} /> Loading upcoming events...</div> : eventsError ? <div className="empty-state"><p>{eventsError}</p></div> : venueEvents.length ? <div className="event-grid">{venueEvents.map((eventItem) => <article className="event-card" key={eventItem.id}><div className="event-poster-wrap"><ImageOrFallback src={eventItem.poster_url} alt={eventItem.title} fallbackSrc={getCategoryPoster(eventItem)} className="event-poster" /></div><div className="event-card-body"><p className="eyebrow">{eventItem.category?.name || "Event"}</p><h3>{eventItem.title}</h3><p className="event-description">{eventItem.description || "Upcoming experience at this venue."}</p><div className="event-meta"><span><CalendarDays size={15} />{prettyDate(eventItem.starts_at)}</span><span>From ₹{Number(eventItem.starting_price || 0).toFixed(0)}</span></div><button className="text-button" onClick={() => onChooseEvent(eventItem)}>Explore showtimes <ChevronRight size={16} /></button></div></article>)}</div> : <div className="empty-state"><CalendarDays size={28} /><h3>No upcoming events at this venue</h3><p>Only events registered against {selectedVenue.name} are shown here.</p></div>)}
+    </section>
+  );
+}
 export default function App() {
   const [tab, setTab] = useState("events");
   const [city, setCity] = useState("All cities");
+  const [citySearch, setCitySearch] = useState("");
   const [search, setSearch] = useState("");
   const [eventType, setEventType] = useState("all");
   const [events, setEvents] = useState([]);
@@ -103,6 +230,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState("login");
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
+  const [authPhone, setAuthPhone] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState("");
@@ -115,6 +243,16 @@ export default function App() {
   const [bookingQuantity, setBookingQuantity] = useState(1);
   const [bookingBusy, setBookingBusy] = useState(false);
   const [bookingError, setBookingError] = useState("");
+  const [bookingStep, setBookingStep] = useState("select");
+  const [bookingResult, setBookingResult] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState("demo_upi");
+  const [paymentQrUnavailable, setPaymentQrUnavailable] = useState(false);
+  const [bookingAccepted, setBookingAccepted] = useState(false);
+  const [holdExpiresAt, setHoldExpiresAt] = useState(null);
+  const [ticketQrDataUrl, setTicketQrDataUrl] = useState("");
+  const [ticketQrLoading, setTicketQrLoading] = useState(false);
+  const [ticketQrError, setTicketQrError] = useState("");
+  const [demoPaymentReference, setDemoPaymentReference] = useState("");
   const [accountOpen, setAccountOpen] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
@@ -200,7 +338,8 @@ export default function App() {
       .then((data) => {
         if (cancelled) return;
         setSessionAvailability(data);
-        if (data.ticket_types?.length) setSelectedTicketTypeId(String(data.ticket_types[0].id));
+        const firstAvailableTicket = data.ticket_types?.find((ticket) => ticket.remaining > 0);
+        if (firstAvailableTicket) setSelectedTicketTypeId(String(firstAvailableTicket.id));
       })
       .catch((error) => { if (!cancelled) setBookingError(error.message); })
       .finally(() => { if (!cancelled) setAvailabilityLoading(false); });
@@ -219,8 +358,15 @@ export default function App() {
       if (cancelled) return;
       setApiOnline(Boolean(healthData?.status === "connected"));
       setCities(Array.isArray(cityData) ? cityData : []);
-      setEvents(Array.isArray(eventData) && eventData.length ? eventData : demoEvents);
-      setMovies(Array.isArray(movieData) && movieData.length ? movieData : demoMovies);
+      const availableEvents = Array.isArray(eventData) && eventData.length ? eventData : demoEvents;
+      const eventTitles = new Set(availableEvents.map((item) => String(item.title || "").trim().toLowerCase()));
+      const posterOnlyEvents = concertPosterPreviews.filter((item) => !eventTitles.has(item.title.trim().toLowerCase()));
+      setEvents([...availableEvents, ...posterOnlyEvents]);
+
+      const availableMovies = Array.isArray(movieData) ? movieData : [];
+      const movieTitles = new Set(availableMovies.map((item) => String(item.title || "").trim().toLowerCase()));
+      const missingPosterMovies = demoMovies.filter((item) => !movieTitles.has(item.title.trim().toLowerCase()));
+      setMovies([...availableMovies, ...missingPosterMovies]);
       setLoading(false);
     }
     loadData();
@@ -228,6 +374,7 @@ export default function App() {
   }, []);
 
   const cityId = cities.find((item) => item.name.toLowerCase() === city.toLowerCase())?.id;
+  const selectedCityId = cities.find((item) => item.name.toLowerCase() === city.toLowerCase())?.id;
   const visibleEvents = useMemo(() => {
     const items = events.filter((item) => {
       const matchesType = eventType === "all" || item.event_type === eventType;
@@ -245,6 +392,7 @@ export default function App() {
   }
   function chooseCategory(category) {
     setTab("events");
+    setEventType("all");
     setSearch(category);
     document.getElementById("discover")?.scrollIntoView({ behavior: "smooth" });
   }
@@ -257,6 +405,14 @@ export default function App() {
     setSelectedSeats([]);
     setSelectedTicketTypeId("");
     setBookingQuantity(1);
+    setBookingStep("select");
+    setBookingResult(null);
+    setTicketQrDataUrl("");
+    setTicketQrLoading(false);
+    setTicketQrError("");
+    setDemoPaymentReference("");
+    setPaymentMethod("demo_upi");
+    setBookingAccepted(false);
     if (item.demo) return;
     try {
       const isEvent = item.event_type === "local" || item.event_type === "major";
@@ -281,7 +437,7 @@ export default function App() {
         const registerResponse = await fetch(`${API_BASE}/api/v1/auth/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: authName, email: authEmail, password: authPassword }),
+          body: JSON.stringify({ name: authName, email: authEmail, password: authPassword, phone: authPhone || null }),
         });
         if (!registerResponse.ok) {
           const body = await registerResponse.json().catch(() => ({}));
@@ -329,7 +485,132 @@ export default function App() {
     }
   }
 
+  async function continueToCheckout() {
+    if (!token) {
+      setAuthError("");
+      setAuthMode("login");
+      setAuthOpen(true);
+      setNotice("Sign in to continue to checkout.");
+      return;
+    }
+    if (!selectedSessionId || !sessionAvailability) {
+      setBookingError("Choose an available session first.");
+      return;
+    }
+    const seatsMode = sessionAvailability.booking_mode === "seats";
+    if (seatsMode && selectedSeats.length === 0) {
+      setBookingError("Select at least one available seat.");
+      return;
+    }
+    if (!seatsMode && !selectedTicketTypeId) {
+      setBookingError("Choose a ticket category with seats remaining.");
+      return;
+    }
+    if (!seatsMode && (selectedTicket?.remaining < bookingQuantity)) {
+      setBookingError("The selected ticket category does not have enough tickets remaining.");
+      return;
+    }
+    setBookingError("");
+    setBookingAccepted(false);
+    setHoldExpiresAt(null);
+    setDemoPaymentReference(`CB-DEMO-${Date.now().toString(36).toUpperCase()}`);
+
+    if (seatsMode) {
+      setBookingBusy(true);
+      try {
+        const response = await fetch(`${API_BASE}/api/v1/bookings/holds`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            session_id: Number(selectedSessionId),
+            seat_ids: selectedSeats,
+          }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.detail || "Could not temporarily reserve these seats.");
+        setHoldExpiresAt(data.expires_at);
+      } catch (error) {
+        setBookingError(error.message || "Could not reserve seats. Refresh availability and try again.");
+        return;
+      } finally {
+        setBookingBusy(false);
+      }
+    }
+
+    setBookingStep("checkout");
+  }
+
+  async function releaseCurrentSeatHold() {
+    if (!token || !selectedSessionId || sessionAvailability?.booking_mode !== "seats" || !holdExpiresAt) {
+      setBookingStep("select");
+      setHoldExpiresAt(null);
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/api/v1/bookings/holds/${selectedSessionId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || "Could not release the seat reservation.");
+      }
+      setSessionAvailability((current) => current ? ({
+        ...current,
+        seats: current.seats.map((seat) => selectedSeats.includes(seat.id)
+          ? { ...seat, available: true, status: "available" }
+          : seat),
+      }) : current);
+      setHoldExpiresAt(null);
+      setBookingStep("select");
+    } catch (error) {
+      setBookingError(error.message || "Could not release the selected seats.");
+    }
+  }
+
+  async function simulateDemoPaymentFailure() {
+    setBookingBusy(true);
+    setBookingError("");
+    try {
+      if (holdExpiresAt && token && selectedSessionId) {
+        const response = await fetch(`${API_BASE}/api/v1/bookings/holds/${selectedSessionId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || "Could not release reserved seats.");
+        }
+        setHoldExpiresAt(null);
+      }
+      setBookingAccepted(false);
+      setBookingStep("select");
+      setBookingError("Demo payment declined. No booking was created and no money was charged. Your seat reservation was released; please select seats again to retry.");
+    } catch (error) {
+      setBookingError(error.message || "Could not complete the demo failure flow.");
+    } finally {
+      setBookingBusy(false);
+    }
+  }
+
+  function closeBookingModal() {
+    if (holdExpiresAt && token && selectedSessionId) {
+      fetch(`${API_BASE}/api/v1/bookings/holds/${selectedSessionId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {
+        // The server-side hold will still expire automatically after its TTL.
+      });
+    }
+    setHoldExpiresAt(null);
+    setSelected(null);
+  }
+
   async function submitBooking() {
+    if (!bookingAccepted) {
+      setBookingError("Please accept the demo booking terms before continuing.");
+      return;
+    }
     if (!token) {
       setAuthError("");
       setAuthOpen(true);
@@ -354,8 +635,8 @@ export default function App() {
       return;
     }
     const payload = isSeats
-      ? { session_id: Number(selectedSessionId), seat_ids: selectedSeats }
-      : { session_id: Number(selectedSessionId), ticket_type_id: Number(selectedTicketTypeId), quantity: Number(bookingQuantity) };
+      ? { session_id: Number(selectedSessionId), seat_ids: selectedSeats, payment_method: paymentMethod }
+      : { session_id: Number(selectedSessionId), ticket_type_id: Number(selectedTicketTypeId), quantity: Number(bookingQuantity), payment_method: paymentMethod };
     setBookingBusy(true);
     setBookingError("");
     try {
@@ -366,14 +647,47 @@ export default function App() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.detail || "Booking failed. Please check availability and retry.");
-      setSelected(null);
-      setNotice(`Booking ${data.booking_reference} confirmed · ₹${Number(data.total_amount).toFixed(2)} (demo payment)`);
+      setBookingResult(data);
+      setHoldExpiresAt(null);
+      setTicketQrDataUrl("");
+      setTicketQrError("");
+      setTicketQrLoading(Boolean(data.ticket_code));
+      setBookingStep("confirmed");
+      setBookings((current) => [data, ...current.filter((booking) => booking.id !== data.id)]);
+      setNotice(`Booking ${data.booking_reference} confirmed. Demo payment only; no money was charged.`);
+
+      if (data.ticket_code) {
+        try {
+          const qrResponse = await fetch(`${API_BASE}/api/v1/bookings/${data.id}/ticket/qr`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const qrData = await qrResponse.json().catch(() => ({}));
+          if (!qrResponse.ok) throw new Error(qrData.detail || "Could not generate the ticket QR code.");
+          setTicketQrDataUrl(qrData.qr_code_data_url || "");
+          if (!qrData.qr_code_data_url) throw new Error("The ticket QR response did not include an image.");
+        } catch (qrError) {
+          setTicketQrError(qrError.message || "Ticket was issued, but its QR image could not be loaded.");
+        } finally {
+          setTicketQrLoading(false);
+        }
+      }
     } catch (error) {
       setBookingError(error.message || "Booking failed.");
     } finally {
       setBookingBusy(false);
     }
   }
+
+  const selectedSeatRows = (sessionAvailability?.seats || []).filter((seat) => selectedSeats.includes(seat.id));
+  const selectedTicket = (sessionAvailability?.ticket_types || []).find((ticket) => String(ticket.id) === selectedTicketTypeId);
+  const bookingSubtotal = sessionAvailability?.booking_mode === "seats"
+    ? selectedSeatRows.reduce((sum, seat) => sum + Number(seat.price ?? sessionAvailability.base_price ?? 0), 0)
+    : selectedTicket && selectedTicket.remaining >= bookingQuantity ? Number(selectedTicket.price) * Number(bookingQuantity) : 0;
+  const bookingTaxPercent = Number(sessionAvailability?.tax_percent || 0);
+  const bookingTax = Number((bookingSubtotal * bookingTaxPercent / 100).toFixed(2));
+  const bookingConvenience = bookingSubtotal > 0 ? Number(sessionAvailability?.convenience_fee || 0) : 0;
+  const bookingGrandTotal = bookingSubtotal + bookingTax + bookingConvenience;
+  const activeSession = availableSessions.find((session) => String(session.id) === String(selectedSessionId));
 
   return (
     <div className="app-shell">
@@ -386,15 +700,27 @@ export default function App() {
           <button className={tab === "movies" ? "active" : ""} onClick={() => { setTab("movies"); setMobileMenu(false); }}>Movies</button>
           <button className={tab === "events" ? "active" : ""} onClick={() => { setTab("events"); setMobileMenu(false); }}>Events</button>
           <button onClick={() => { setEventType("local"); setTab("events"); setMobileMenu(false); }}>Local finds</button>
+          {currentUser && <button className={tab === "portal" ? "active" : ""} onClick={() => { setTab("portal"); setMobileMenu(false); }}>Dashboard</button>}
         </nav>
         <div className="top-actions">
-          <label className="city-select"><MapPin size={16} /><select value={city} onChange={(event) => setCity(event.target.value)} aria-label="Choose city"><option>All cities</option>{cities.map((item) => <option key={item.id}>{item.name}</option>)}{!cities.some((item) => item.name === "Guwahati") && <option>Guwahati</option>}{!cities.some((item) => item.name === "Tezpur") && <option>Tezpur</option>}</select></label>
+          <label className="city-select"><MapPin size={16} /><select value={city} onChange={(event) => { setCity(event.target.value); setCitySearch(""); }} aria-label="Choose city"><option>All cities</option>{cities.map((item) => <option key={item.id}>{item.name}</option>)}</select></label>
           {currentUser ? <button className="profile-button" onClick={() => setAccountOpen(true)}><CircleUserRound size={19} /><span>{currentUser.name?.split(" ")[0] || "Account"}</span></button> : <button className="profile-button" onClick={() => { setAuthMode("login"); setAuthError(""); setAuthOpen(true); }}><CircleUserRound size={19} /><span>Sign in</span></button>}
           <button className="icon-button mobile-menu-button" onClick={() => setMobileMenu((value) => !value)} aria-label="Toggle navigation">{mobileMenu ? <X /> : <Menu />}</button>
         </div>
       </header>
 
       <main>
+        {tab === "portal" && currentUser ? (
+          <PortalDashboard
+            apiBase={API_BASE}
+            token={token}
+            currentUser={currentUser}
+            onNotice={setNotice}
+            onClose={() => setTab("events")}
+          />
+        ) : <>
+        <VenueBrowser apiBase={API_BASE} cityId={selectedCityId} cityName={city} onChooseEvent={(item) => bookItem({ ...item, event_type: "local" })} />
+
         <section className="hero">
           <div className="hero-glow glow-one"></div><div className="hero-glow glow-two"></div>
           <div className="hero-copy">
@@ -419,7 +745,7 @@ export default function App() {
         <section className="category-strip" aria-label="Explore event categories">
           <div className="section-intro"><span className="mini-label">FIND YOUR THING</span><h2>What are you<br />in the mood for?</h2></div>
           <div className="category-list">
-            {categories.map(({ name, icon: Icon, filter }) => <button className="category-pill" key={name} onClick={() => chooseCategory(filter)}><span><Icon size={20} /></span><b>{name}</b><ChevronRight size={16} /></button>)}
+            {categories.map(({ name, icon: Icon, filter, poster }) => <button className="category-pill" key={name} onClick={() => chooseCategory(filter)} style={{ "--category-poster": `url("${poster}")` }}><span><Icon size={20} /></span><b>{name}</b><ChevronRight size={16} /></button>)}
           </div>
         </section>
 
@@ -445,33 +771,185 @@ export default function App() {
           <div><span className="mini-label">YOUR NEIGHBOURHOOD HAS A STORY</span><h2>Great things happen <em>locally.</em></h2><p>From campus stages to community workshops, make room for the things happening close to home.</p></div>
           <button onClick={() => { setEventType("local"); setTab("events"); setSearch(""); document.getElementById("discover")?.scrollIntoView({ behavior: "smooth" }); }}>Explore local events <ArrowUpRight size={17} /></button>
         </section>
+        </>}
       </main>
 
       <footer className="footer"><a className="brand footer-brand" href="#"><span className="brand-mark"><Ticket size={18} /></span><span>Cine<span>Book</span><small>YOUR CITY. YOUR SCENE.</small></span></a><p>Made for the moments you’ll remember.</p><div><span className={`api-indicator ${apiOnline ? "online" : ""}`}></span>{apiOnline ? "Connected to local API" : "Showing preview data"}</div><small>© 2026 CineBook · DBMS project</small></footer>
 
       {notice && <div className="toast" role="status"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Dismiss"><X size={16} /></button></div>}
 
-      {accountOpen && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setAccountOpen(false); }}><div className="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-title"><button className="icon-button modal-close" onClick={() => setAccountOpen(false)} aria-label="Close"><X /></button><span className="mini-label">YOUR CINEBOOK</span><h2 id="account-title">Your bookings.</h2><p className="account-email">Signed in as {currentUser?.email}</p>{bookingsError && <p className="form-error" role="alert">{bookingsError}</p>}{bookingsLoading ? <p className="booking-hint">Loading your booking history…</p> : bookings.length ? <div className="booking-list">{bookings.map((booking) => <article className="booking-record" key={booking.id}><div><span className="booking-reference">{booking.booking_reference}</span><span className={`booking-status status-${booking.status}`}>{booking.status}</span></div><p>Session #{booking.session_id} · ₹{Number(booking.total_amount).toFixed(2)}</p><small>Booking ID {booking.id}</small>{booking.status === "confirmed" && <button className="cancel-booking" disabled={cancellingBookingId === booking.id} onClick={() => cancelBooking(booking.id)}>{cancellingBookingId === booking.id ? "Cancelling…" : "Cancel booking"}</button>}</article>)}</div> : <div className="empty-bookings"><Ticket size={27} /><p>No bookings yet. Find a movie or event and book your first experience.</p></div>}<div className="account-actions"><button className="secondary-button" onClick={() => { setAccountOpen(false); setToken(""); setCurrentUser(null); setNotice("You have signed out."); }}>Sign out</button><button className="primary-button" onClick={() => setAccountOpen(false)}>Done</button></div></div></div>}
+      {accountOpen && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setAccountOpen(false); }}><div className="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-title"><button className="icon-button modal-close" onClick={() => setAccountOpen(false)} aria-label="Close"><X /></button><span className="mini-label">YOUR CINEBOOK</span><h2 id="account-title">Your bookings.</h2><p className="account-email">Signed in as {currentUser?.email}</p>{bookingsError && <p className="form-error" role="alert">{bookingsError}</p>}{bookingsLoading ? <p className="booking-hint">Loading your booking history…</p> : bookings.length ? <div className="booking-list">{bookings.map((booking) => <article className="booking-record" key={booking.id}><div><span className="booking-reference">{booking.booking_reference}</span><span className={`booking-status status-${booking.status}`}>{booking.status}</span></div><p>Session #{booking.session_id} · ₹{Number(booking.total_amount).toFixed(2)}</p><small>Booking ID {booking.id}{booking.ticket_code ? ` · Ticket ${booking.ticket_code}` : ""}</small>{booking.status === "confirmed" && <button className="cancel-booking" disabled={cancellingBookingId === booking.id} onClick={() => cancelBooking(booking.id)}>{cancellingBookingId === booking.id ? "Cancelling…" : "Cancel booking"}</button>}</article>)}</div> : <div className="empty-bookings"><Ticket size={27} /><p>No bookings yet. Find a movie or event and book your first experience.</p></div>}<div className="account-actions"><button className="secondary-button" onClick={() => { setAccountOpen(false); setToken(""); setCurrentUser(null); setNotice("You have signed out."); }}>Sign out</button><button className="primary-button" onClick={() => setAccountOpen(false)}>Done</button></div></div></div>}
 
-      {authOpen && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setAuthOpen(false); }}><div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><button className="icon-button modal-close" onClick={() => setAuthOpen(false)} aria-label="Close"><X /></button><span className="mini-label">WELCOME TO CINEBOOK</span><h2 id="auth-title">{authMode === "login" ? "Good to see you." : "Create your account."}</h2><p className="auth-subtitle">{authMode === "login" ? "Sign in to save your plans and book tickets." : "Join CineBook and discover things happening around you."}</p><form className="auth-form" onSubmit={submitAuth}>{authMode === "register" && <label>Full name<input value={authName} onChange={(event) => setAuthName(event.target.value)} minLength={2} required autoComplete="name" /></label>}<label>Email address<input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} required autoComplete="email" /></label><label>Password<input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} minLength={8} required autoComplete={authMode === "login" ? "current-password" : "new-password"} /></label>{authError && <p className="form-error" role="alert">{authError}</p>}<button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? "Please wait..." : authMode === "login" ? "Sign in" : "Create account"}</button></form><p className="auth-switch">{authMode === "login" ? "New to CineBook?" : "Already have an account?"} <button onClick={() => { setAuthMode(authMode === "login" ? "register" : "login"); setAuthError(""); }}> {authMode === "login" ? "Create account" : "Sign in"}</button></p></div></div>}
+      {authOpen && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setAuthOpen(false); }}><div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><button className="icon-button modal-close" onClick={() => setAuthOpen(false)} aria-label="Close"><X /></button><span className="mini-label">WELCOME TO CINEBOOK</span><h2 id="auth-title">{authMode === "login" ? "Good to see you." : "Create your account."}</h2><p className="auth-subtitle">{authMode === "login" ? "Sign in to save your plans and book tickets." : "Join CineBook and discover things happening around you."}</p><form className="auth-form" onSubmit={submitAuth}>{authMode === "register" && <><label>Full name<input value={authName} onChange={(event) => setAuthName(event.target.value)} minLength={2} required autoComplete="name" /></label><label>Phone number <span className="field-optional">optional</span><input type="tel" value={authPhone} onChange={(event) => setAuthPhone(event.target.value)} maxLength={30} autoComplete="tel" /></label></>}<label>Email address<input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} required autoComplete="email" /></label><label>Password<input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} minLength={8} required autoComplete={authMode === "login" ? "current-password" : "new-password"} /></label>{authError && <p className="form-error" role="alert">{authError}</p>}<button className="primary-button auth-submit" type="submit" disabled={authBusy}>{authBusy ? "Please wait..." : authMode === "login" ? "Sign in" : "Create account"}</button></form><p className="auth-switch">{authMode === "login" ? "New to CineBook?" : "Already have an account?"} <button onClick={() => { setAuthMode(authMode === "login" ? "register" : "login"); setAuthError(""); }}> {authMode === "login" ? "Create account" : "Sign in"}</button></p></div></div>}
 
-      {selected && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><div className="detail-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button className="icon-button modal-close" onClick={() => setSelected(null)} aria-label="Close"><X /></button><ImageOrFallback src={selected.poster_url} alt={selected.title} className="modal-poster" /><div className="modal-content"><span className="mini-label">{selected.demo ? "PREVIEW LISTING" : selected.language || selected.category?.name || "CINEBOOK"}</span><h2 id="modal-title">{selected.title}</h2><p>{selected.description || selected.synopsis || "Explore the details and upcoming sessions for this listing."}</p>{selected.event_type && <div className="modal-fact"><MapPin size={16} />{selected.venue?.name || "Venue details"} · {selected.city?.name || "City details"}</div>}
+      {selected && <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget && bookingStep !== "confirmed") closeBookingModal(); }}>
+        <div className={`detail-modal booking-modal ${bookingStep === "confirmed" ? "ticket-confirmed-modal" : ""}`} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+          <button className="icon-button modal-close" onClick={closeBookingModal} aria-label="Close"><X /></button>
+          <ImageOrFallback src={selected.poster_url} fallbackSrc={getCategoryPoster(selected)} alt={selected.title} className="modal-poster" />
+          <div className="modal-content">
+            <span className="mini-label">{selected.demo ? "SAMPLE PREVIEW" : selected.description?.startsWith("CINEBOOK TEST LISTING ONLY.") ? "DEMO BOOKING SESSION" : selected.language || selected.category?.name || "CINEBOOK"}</span>
+            <h2 id="modal-title">{selected.title}</h2>
+            <p>{selected.description || selected.synopsis || "Explore the details and upcoming sessions for this listing."}</p>
+            {selected.event_type && <div className="modal-fact"><MapPin size={16} />{selected.venue?.name || "Venue details"} · {selected.city?.name || "City details"}</div>}
 
-        {selected.demo ? <div className="preview-note"><Sparkles size={17} /><span>This is sample preview content. Add a real listing and sessions to enable live availability and booking.</span></div> : <>
-          <label className="booking-label">Choose a session
-            <select value={selectedSessionId} onChange={(event) => setSelectedSessionId(event.target.value)}>
-              <option value="">Select session</option>
-              {availableSessions.map((item) => <option key={item.id} value={item.id}>{prettyDate(item.starts_at)} · {prettyTime(item.starts_at)} · ₹{Number(item.base_price).toFixed(2)}</option>)}
-            </select>
-          </label>
-          {availabilityLoading && <p className="booking-hint">Checking availability…</p>}
-          {sessionAvailability && sessionAvailability.booking_mode === "seats" && <div className="seat-picker"><div className="screen-label">SCREEN</div><div className="seat-grid">{sessionAvailability.seats.map((seat) => <button type="button" key={seat.id} title={`Row ${seat.row_label}, seat ${seat.seat_number}`} disabled={!seat.available} className={`seat ${seat.available ? "" : "unavailable"} ${selectedSeats.includes(seat.id) ? "chosen" : ""}`} onClick={() => setSelectedSeats((current) => current.includes(seat.id) ? current.filter((id) => id !== seat.id) : [...current, seat.id])}>{seat.row_label}{seat.seat_number}</button>)}</div><p className="booking-hint">{selectedSeats.length} seat(s) selected · ₹{(selectedSeats.length * Number(sessionAvailability.base_price)).toFixed(2)}</p></div>}
-          {sessionAvailability && sessionAvailability.booking_mode === "general_admission" && <div className="ticket-picker"><label className="booking-label">Ticket category<select value={selectedTicketTypeId} onChange={(event) => setSelectedTicketTypeId(event.target.value)}><option value="">Choose ticket type</option>{sessionAvailability.ticket_types.map((ticket) => <option key={ticket.id} value={ticket.id} disabled={ticket.remaining < 1}>{ticket.name} · ₹{Number(ticket.price).toFixed(2)} · {ticket.remaining} left</option>)}</select></label><label className="booking-label">Quantity<select value={bookingQuantity} onChange={(event) => setBookingQuantity(Number(event.target.value))}>{Array.from({length: 10}, (_, index) => index + 1).map((amount) => <option key={amount} value={amount}>{amount}</option>)}</select></label>{sessionAvailability.ticket_types.find((ticket) => String(ticket.id) === selectedTicketTypeId) && <p className="booking-hint">Estimated total: ₹{(Number(sessionAvailability.ticket_types.find((ticket) => String(ticket.id) === selectedTicketTypeId).price) * bookingQuantity).toFixed(2)}</p>}</div>}
-          {bookingError && <p className="form-error" role="alert">{bookingError}</p>}
-          <div className="modal-actions"><button className="primary-button" disabled={bookingBusy || availabilityLoading || !sessionAvailability} onClick={submitBooking}><Ticket size={17} />{bookingBusy ? "Booking…" : token ? "Confirm booking" : "Sign in to book"}</button><button className="secondary-button" onClick={() => { toggleSaved(selected.id); setNotice(saved.includes(selected.id) ? "Removed from saved listings." : "Saved for later."); }}><Heart size={16} /> Save</button></div>
-          <p className="demo-payment-note">Academic demo checkout · Payments are simulated; no card details are collected.</p>
-        </>}
-      </div></div></div>}
+            {selected.demo ? <div className="preview-note"><Sparkles size={17} /><span>{selected.poster_preview ? "Archived poster preview. The supplied poster marks this event as closed, so this card is for catalogue display only and has no current showtime or ticket availability." : "Sample catalogue preview. This listing is not connected to a bookable cinema session yet."}</span></div> : <>
+              <div className="booking-stepper" aria-label="Booking progress">
+                <span className={bookingStep === "select" ? "active" : bookingStep !== "select" ? "done" : ""}>1 <b>Show & seats</b></span>
+                <i />
+                <span className={bookingStep === "checkout" ? "active" : bookingStep === "confirmed" ? "done" : ""}>2 <b>Checkout</b></span>
+                <i />
+                <span className={bookingStep === "confirmed" ? "active" : ""}>3 <b>Ticket</b></span>
+              </div>
+
+              {bookingStep === "select" && <>
+                <label className="booking-label">Choose date and showtime
+                  <select value={selectedSessionId} onChange={(event) => setSelectedSessionId(event.target.value)}>
+                    <option value="">Select session</option>
+                    {availableSessions.map((item) => <option key={item.id} value={item.id}>{prettyDate(item.starts_at)} · {prettyTime(item.starts_at)} · From ₹{Number(item.base_price).toFixed(0)}</option>)}
+                  </select>
+                </label>
+                {activeSession && <p className="booking-hint session-location"><MapPin size={14} />{activeSession.venue?.name || selected.venue?.name || "Venue / screen details"} {activeSession.venue_space?.name ? `· ${activeSession.venue_space.name}` : ""}</p>}
+                {availabilityLoading && <p className="booking-hint">Checking seats and ticket availability…</p>}
+
+                {sessionAvailability && sessionAvailability.booking_mode === "seats" && <>
+                  <div className="seat-picker">
+                    <div className="screen-label">SCREEN</div>
+                    <div className="seat-legend">
+                      <span><i className="legend-seat available" />Available</span>
+                      <span><i className="legend-seat chosen" />Selected</span>
+                      <span><i className="legend-seat unavailable" />Booked</span>
+                    </div>
+                    <div className="seat-grid">{sessionAvailability.seats.map((seat) => <button type="button" key={seat.id} title={`Row ${seat.row_label}, seat ${seat.seat_number} · ₹${Number(seat.price ?? sessionAvailability.base_price).toFixed(0)}`} disabled={!seat.available} className={`seat ${seat.available ? "" : "unavailable"} ${selectedSeats.includes(seat.id) ? "chosen" : ""} seat-${String(seat.seat_category || "standard").toLowerCase()}`} onClick={() => setSelectedSeats((current) => current.includes(seat.id) ? current.filter((id) => id !== seat.id) : [...current, seat.id])}>{seat.row_label}{seat.seat_number}</button>)}</div>
+                    <p className="booking-hint">{selectedSeats.length} seat(s) selected · ₹{bookingSubtotal.toFixed(2)} subtotal</p>
+                    {selectedSeatRows.length > 0 && <div className="selected-seat-chips">{selectedSeatRows.map((seat) => <span key={seat.id}>{seat.row_label}{seat.seat_number} · ₹{Number(seat.price ?? sessionAvailability.base_price).toFixed(0)}</span>)}</div>}
+                  </div>
+                </>}
+
+                {sessionAvailability && sessionAvailability.booking_mode === "general_admission" && <div className="ticket-picker">
+                  <label className="booking-label">Ticket category
+                    <select value={selectedTicketTypeId} onChange={(event) => setSelectedTicketTypeId(event.target.value)}>
+                      <option value="">Choose ticket type</option>
+                      {sessionAvailability.ticket_types.map((ticket) => <option key={ticket.id} value={ticket.id} disabled={ticket.remaining < 1}>{ticket.name} · ₹{Number(ticket.price).toFixed(0)} · {ticket.remaining} left</option>)}
+                    </select>
+                  </label>
+                  <label className="booking-label">Number of tickets
+                    <select value={bookingQuantity} onChange={(event) => setBookingQuantity(Number(event.target.value))}>
+                      {Array.from({ length: Math.min(10, selectedTicket?.remaining || 10) }, (_, index) => index + 1).map((amount) => <option key={amount} value={amount}>{amount}</option>)}
+                    </select>
+                  </label>
+                </div>}
+
+                {sessionAvailability && <div className="price-breakdown">
+                  <div><span>Ticket subtotal</span><b>₹{bookingSubtotal.toFixed(2)}</b></div>
+                  <div><span>Taxes {bookingTaxPercent ? `(${bookingTaxPercent}%)` : ""}</span><b>₹{bookingTax.toFixed(2)}</b></div>
+                  <div><span>Convenience fee</span><b>₹{bookingConvenience.toFixed(2)}</b></div>
+                  <div className="price-total"><span>Payable total</span><b>₹{bookingGrandTotal.toFixed(2)}</b></div>
+                </div>}
+                {bookingError && <p className="form-error" role="alert">{bookingError}</p>}
+                <div className="modal-actions">
+                  <button className="primary-button" disabled={availabilityLoading || bookingBusy || !sessionAvailability || bookingSubtotal <= 0} onClick={continueToCheckout}>{bookingBusy ? "Reserving seats…" : "Continue to checkout"} <ChevronRight size={17} /></button>
+                  <button className="secondary-button" onClick={() => { toggleSaved(selected.id); setNotice(saved.includes(selected.id) ? "Removed from saved listings." : "Saved for later."); }}><Heart size={16} /> Save</button>
+                </div>
+                <p className="demo-payment-note">Preview inventory and prices are seeded for this academic demo. Availability is not a live venue feed.</p>
+              </>}
+
+              {bookingStep === "checkout" && <div className="checkout-panel">
+                <div className="demo-gateway-heading">
+                  <div className="demo-gateway-logo"><Ticket size={20} /></div>
+                  <div><span className="mini-label">CINEBOOK SECURE CHECKOUT</span><h3>CineBook DemoPay</h3><p>Test payment gateway · no real money is involved</p></div>
+                  <span className="demo-mode-pill">DEMO MODE</span>
+                </div>
+                <div className="demo-order-strip"><span>Demo order reference</span><b>{demoPaymentReference || "Preparing demo order…"}</b></div>
+                <p className="booking-hint">Choose a simulated payment method, review the order and test either a successful or declined payment.</p>
+                <div className="checkout-recap">
+                  <div><span>Experience</span><b>{selected.title}</b></div>
+                  <div><span>Show</span><b>{activeSession ? `${prettyDate(activeSession.starts_at)} · ${prettyTime(activeSession.starts_at)}` : `Session #${selectedSessionId}`}</b></div>
+                  <div><span>Venue</span><b>{selected.venue?.name || activeSession?.venue?.name || "Venue details"}</b></div>
+                  <div><span>Tickets</span><b>{sessionAvailability?.booking_mode === "seats" ? selectedSeatRows.map((seat) => `${seat.row_label}${seat.seat_number}`).join(", ") : `${bookingQuantity} × ${selectedTicket?.name || "Ticket"}`}</b></div>
+                  <div><span>Booking under</span><b>{currentUser?.name || currentUser?.email}</b></div>
+                  <div><span>Contact email</span><b>{currentUser?.email}</b></div>
+                  {holdExpiresAt && <div><span>Seat reservation</span><b>Held until {new Date(holdExpiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</b></div>}
+                  {currentUser?.phone && <div><span>Phone</span><b>{currentUser.phone}</b></div>}
+                </div>
+                <h4>Choose a demo payment method</h4>
+                <div className="payment-methods">
+                  {[
+                    ["demo_upi", "UPI", "Simulated UPI approval"],
+                    ["demo_upi_qr", "Scan UPI QR", "Show merchant QR · demo confirmation only"],
+                    ["demo_card", "Credit / Debit Card", "Test card flow · no card data"],
+                    ["demo_netbanking", "Netbanking", "Demo bank redirect"],
+                  ].map(([value, label, detail]) => <button type="button" key={value} className={paymentMethod === value ? "payment-method selected" : "payment-method"} onClick={() => setPaymentMethod(value)}><span className="payment-radio">{paymentMethod === value ? "●" : ""}</span><span><b>{label}</b><small>{detail}</small></span></button>)}
+                </div>
+                {paymentMethod === "demo_upi_qr" && <div className="merchant-qr-panel">
+                  <div className="merchant-qr-heading"><b>Scan & pay using any UPI app</b><small>Merchant payment QR · INR ₹{bookingGrandTotal.toFixed(2)}</small></div>
+                  {paymentQrUnavailable ? <div className="merchant-qr-missing">
+                    <Ticket size={22} />
+                    <b>Merchant QR image not configured</b>
+                    <p>Place your genuine UPI QR image at <code>frontend/public/payment-qr.png</code>, then refresh CineBook.</p>
+                  </div> : <img
+                    className="merchant-payment-qr"
+                    src={PAYMENT_QR_IMAGE_URL}
+                    alt="Merchant UPI payment QR code"
+                    onError={() => setPaymentQrUnavailable(true)}
+                    onLoad={() => setPaymentQrUnavailable(false)}
+                  />}
+                  <p className="merchant-qr-disclaimer">Demo only: CineBook cannot verify an external UPI transfer from a static QR. The button below simulates a successful payment and does not confirm that money was received.</p>
+                </div>}
+                <div className="price-breakdown">
+                  <div><span>Ticket subtotal</span><b>₹{bookingSubtotal.toFixed(2)}</b></div>
+                  <div><span>Taxes</span><b>₹{bookingTax.toFixed(2)}</b></div>
+                  <div><span>Convenience fee</span><b>₹{bookingConvenience.toFixed(2)}</b></div>
+                  <div className="price-total"><span>Total to pay</span><b>₹{bookingGrandTotal.toFixed(2)}</b></div>
+                </div>
+                {bookingError && <p className="form-error" role="alert">{bookingError}</p>}
+                <div className="demo-gateway-panel">
+                  <div><span className="gateway-lock">🔒 TEST GATEWAY</span><b>{paymentMethod === "demo_upi_qr" ? "UPI QR payment · demo" : paymentMethod === "demo_upi" ? "UPI payment simulation" : paymentMethod === "demo_card" ? "Card payment simulation" : "Netbanking simulation"}</b><small>Selected method: {paymentMethod.replace("demo_", "").replace("_", " ").toUpperCase()}</small></div>
+                  <div className="gateway-amount">₹{bookingGrandTotal.toFixed(2)}<small>Amount due · INR</small></div>
+                </div>
+                <div className="demo-safe-note"><span>SIMULATED PAYMENT PAGE</span><p>This gateway is for project testing only. It does not contact a bank or payment network. Never enter real card numbers, CVV, UPI PIN, OTP or banking credentials.</p></div>
+                <label className="booking-terms"><input type="checkbox" checked={bookingAccepted} onChange={(event) => setBookingAccepted(event.target.checked)} /><span>I have reviewed the show details and price breakdown, and understand that this is a simulated booking.</span></label>
+                <div className="demo-gateway-actions">
+                  <button className="primary-button demo-pay-button" disabled={bookingBusy || !bookingAccepted} onClick={submitBooking}>{bookingBusy ? "Processing simulated payment…" : `Simulate successful payment · ₹${bookingGrandTotal.toFixed(2)}`}</button>
+                  <button className="demo-fail-button" disabled={bookingBusy} onClick={simulateDemoPaymentFailure}>Simulate payment failure</button>
+                </div>
+                <div className="modal-actions">
+                  <button className="secondary-button" disabled={bookingBusy} onClick={releaseCurrentSeatHold}>← Back to seats</button>
+                </div>
+              </div>}
+
+              {bookingStep === "confirmed" && bookingResult && <div className="ticket-confirmation" id="printable-ticket">
+                <div className="ticket-success-mark">✓</div>
+                <span className="mini-label">CINEBOOK E-TICKET</span>
+                <h3>Booking confirmed!</h3>
+                <p>Your demo ticket has been issued. Keep this code for check-in simulation.</p>
+                <div className="issued-ticket-code">{bookingResult.ticket_code || bookingResult.booking_reference}</div>
+                <div className="ticket-qr-panel">
+                  {ticketQrLoading ? <p className="booking-hint">Generating your secure ticket QR code…</p> :
+                    ticketQrDataUrl ? <>
+                      <img className="ticket-qr-image" src={ticketQrDataUrl} alt="CineBook ticket QR code" />
+                      <p>Scan this code to read the ticket reference.</p>
+                      <a className="secondary-button ticket-qr-download" href={ticketQrDataUrl} download={`cinebook-${bookingResult.booking_reference}-qr.png`}>Download ticket QR (PNG)</a>
+                    </> :
+                      <p className="form-error" role="alert">{ticketQrError || "Ticket QR code is unavailable. Keep your ticket reference."}</p>}
+                </div>
+                <div className="checkout-recap">
+                  <div><span>Booking reference</span><b>{bookingResult.booking_reference}</b></div>
+                  <div><span>Experience</span><b>{selected.title}</b></div>
+                  <div><span>Show</span><b>{activeSession ? `${prettyDate(activeSession.starts_at)} · ${prettyTime(activeSession.starts_at)}` : `Session #${bookingResult.session_id}`}</b></div>
+                  <div><span>Tickets / seats</span><b>{sessionAvailability?.booking_mode === "seats" ? selectedSeatRows.map((seat) => `${seat.row_label}${seat.seat_number}`).join(", ") : `${bookingQuantity} × ${selectedTicket?.name || "Ticket"}`}</b></div>
+                  <div><span>Total paid (simulation)</span><b>₹{Number(bookingResult.total_amount).toFixed(2)}</b></div>
+                  <div><span>Payment status</span><b className="payment-approved">Demo payment successful</b></div>
+                </div>
+                <div className="demo-safe-note"><span>NO MONEY CHARGED</span><p>This is a simulated ticket for your CineBook project. It is not valid for entry to the real venue.</p></div>
+                <div className="modal-actions">
+                  <button className="secondary-button" onClick={() => window.print()}>Print ticket</button>
+                  <button className="primary-button" onClick={() => { setSelected(null); setBookingStep("select"); setBookingResult(null); }}>Back to discovery</button>
+                </div>
+              </div>}
+            </>}
+          </div>
+        </div>
+      </div>}
     </div>
   );
 }

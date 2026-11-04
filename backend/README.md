@@ -17,9 +17,9 @@ Copy-Item .env.example .env
 
 Edit `backend/.env` locally. Set your MySQL user/password and replace `SECRET_KEY` with a long random secret. Keep `.env` private.
 
-Create the database by running `backend/sql/schema.sql` in MySQL Workbench (it creates `cinebook_db` and all 13 tables). The optional `backend/sql/seed_demo.sql` adds cities, categories, a demo cinema, one sample movie, 40 seats, and a future show. For the complete sample including a major concert and local workshop, use the interactive Python seeder below after configuring `.env`.
+Create the database by running `backend/sql/schema.sql` in MySQL Workbench (it creates `cinebook_db` and the current tables). For an existing CineBook database, first take a backup and then run migrations `backend/sql/migrations/002_venue_booking_flow.sql` and `backend/sql/migrations/003_platform_modules.sql` in that order. Migration 003 adds organizer applications, moderation statuses, profile reset tokens, notifications, refunds, reviews, audit logs, ticket check-in and reporting views; it also adds TMDB IDs and explicit event session booking modes. The optional `backend/sql/seed_demo.sql` adds a small legacy starter dataset. For the complete sample catalogue and bookable demo inventory, use the interactive Python seeder below after configuring `.env`. On an existing database, apply both migrations `002` and `003` after taking a backup before running the seeder.
 
-Run the local-only demo seeder from `backend/` (it creates missing tables and prompts for an organizer email/password; no default credentials are stored in the project):
+Run the local-only demo seeder from `backend/` (it creates missing tables and prompts for an organizer email/password; no default credentials are stored in the project). It adds five movie listings, 60 cinema seats across Standard/Premium/Recliner price tiers, the Bhumika Marathi play at Vasantrao Deshpande Hall in Nagpur, Mumbai event samples including The Messi Experience, Papa Yaar by Zakir Khan, and CALVIN HARRIS, plus a clearly disclosed Philharmonic demo-only checkout session for 21 Nov 2026 at 7:00 PM (General Admission ₹499 / Premium ₹799). The supplied concert poster says Event Closed; this seeded show is invented test inventory and is not a real event or valid admission. The seeder also adds Delhi, Bengaluru, Hyderabad, Kolkata, and Pune in the city directory. The five new cities are directory entries only; venues and actual events must be supplied by verified imports or organizer/admin records. Seeded schedules, capacity, prices, tax and convenience fees are demo values:
 
 ```powershell
 python -m scripts.seed_demo
@@ -37,17 +37,20 @@ URLs:
 - http://127.0.0.1:8000/health/db
 - http://127.0.0.1:8000/health/schema
 
-For local coursework, missing tables are auto-created only when `APP_ENV=development` and `DEMO_MODE=true`. Disable this mode outside local development. The project currently provides a complete initial SQL DDL script; a versioned migration history is a future hardening step.
+For local coursework, missing tables are auto-created only when `APP_ENV=development` and `DEMO_MODE=true`. Disable this mode outside local development. The versioned SQL migration is the source of truth for upgrading an existing database.
 
 ## API reference
 ### Authentication
 - `POST /api/v1/auth/register`: create customer account.
 - `POST /api/v1/auth/login`: form fields `username` (email) and `password`; returns bearer token.
 - `GET /api/v1/auth/me`: current user.
+- `POST /api/v1/auth/password-reset/request` and `POST /api/v1/auth/password-reset/confirm`: hashed, expiring, single-use reset tokens. Configure SMTP to deliver production reset links; local development can return a temporary test token.
 
 ### Public discovery
-- `GET /api/v1/cities`
-- `GET /api/v1/venues?city_id=1`
+- `GET /api/v1/cities` — returns all seeded and administrator-created cities, including Guwahati, Tezpur, Nagpur, Mumbai, Delhi, Bengaluru, Hyderabad, Kolkata, and Pune after demo seeding.
+- `GET /api/v1/venues?city_id=1&q=stadium&venue_type=stadium` — city-scoped venue search
+- `GET /api/v1/venues/{venue_id}` — venue details and capacity summary
+- `GET /api/v1/venues/{venue_id}/events?category_id=1&sort=date` — published upcoming events at that venue only
 - `GET /api/v1/venues/{venue_id}/spaces`
 - `GET /api/v1/movies?q=film`
 - `GET /api/v1/events?city_id=1&event_type=local&q=music`
@@ -68,13 +71,20 @@ For local coursework, missing tables are auto-created only when `APP_ENV=develop
 - `POST /api/v1/manage/seats/bulk?venue_space_id=1&seats_per_row=10` with a JSON array of row labels as the body
 
 ### Booking (login required)
-- `POST /api/v1/bookings`: assigned seats: `{"session_id":1,"seat_ids":[1,2]}`; general admission: `{"session_id":2,"ticket_type_id":1,"quantity":2}`.
+- `POST /api/v1/bookings/holds`: request a temporary user-owned hold for 1-20 cinema seat IDs: `{"session_id":1,"seat_ids":[1,2]}`. Holds expire after `SEAT_HOLD_MINUTES` (default 8 minutes); requesting a new selection replaces that customer's previous hold for the same show.
+- `DELETE /api/v1/bookings/holds/{session_id}`: release the signed-in user's holds for that show.
+- `POST /api/v1/bookings`: assigned seats: `{"session_id":1,"seat_ids":[1,2],"payment_method":"demo_upi"}`; general admission: `{"session_id":2,"ticket_type_id":1,"quantity":2,"payment_method":"demo_card"}`. Assigned-seat bookings require unexpired holds owned by the requesting user. Payment method values are `demo_upi`, `demo_upi_qr`, `demo_card`, or `demo_netbanking`.
 - `GET /api/v1/bookings/me`
 - `GET /api/v1/bookings/{id}`
+- `GET /api/v1/bookings/{id}/ticket/qr`: owner/admin-only QR image response for confirmed bookings; the QR stores only the unguessable ticket code.
 - `GET /api/v1/bookings/{id}/payments`
 - `POST /api/v1/bookings/{id}/cancel`
 
-Payments/refunds are simulated for coursework. No card information is collected and no real payment provider is connected.
+
+### Optional merchant UPI QR image
+Place your own legitimate merchant UPI QR image at `frontend/public/payment-qr.png`. When the customer selects "Scan UPI QR", the checkout displays that image. This static QR display is not payment verification: a customer can scan it externally, but CineBook cannot detect or verify a transfer. The primary action remains a clearly labelled simulated success/failure for local coursework testing. Do not use the demo flow to collect real payments.
+
+Payments/refunds are simulated for coursework. The checkout now opens the CineBook DemoPay test page with UPI/card/netbanking method selection, simulated success and decline actions, and no credential fields. On success the backend confirms the demo booking and issues a random ticket code; the QR endpoint renders that code as a PNG data URL for display/download. QR contents do not include customer or payment information. No real payment provider is connected and demo tickets are not valid for admission to real venues.
 
 ## Create first administrator
 Register your own account via `POST /api/v1/auth/register`. Then, using your local MySQL Workbench and after confirming the email, promote only your own account:
@@ -88,3 +98,35 @@ From `backend/` run `pytest`. GitHub Actions also runs backend tests and a front
 
 ## Database concepts
 The project demonstrates normalization, PK/FK relationships, unique constraints, check constraints, role-based access, transaction boundaries, and booking-capacity checks.
+
+
+## Venue / show booking schema extension
+
+- `sessions.tax_percent` and `sessions.convenience_fee` hold show-specific checkout settings.
+- `seats.seat_category` describes a physical seat category while the seat remains part of a venue space's reusable layout.
+- `show_seat_holds` scopes temporary locks to one session + physical seat, so the same seat can be sold again for another show.
+- `bookings` stores backend-calculated subtotal, tax, convenience fees, expiry, and optional ticket code.
+- `booking_tickets` stores issued ticket codes separately from seat inventory.
+
+The discovery endpoints are database-backed. Venue poster/image URLs are not yet stored in the venue model, so the venue API currently returns an empty `images` list rather than inventing URLs. Movie/play plot summaries in the demo catalogue are sourced from the supplied screenshots/listing descriptions; all show dates and prices used by the demo seeder are explicitly sample values.
+
+
+## Customer, organizer and administrator portal
+
+The React header contains a Dashboard link for signed-in accounts. The API enforces role checks; hiding a UI tab is not treated as authorization.
+
+- `GET/PATCH /api/v1/portal/profile`: current profile.
+- `POST /api/v1/portal/organizer-applications`: customer applies for organizer access. Admins list and decide via `GET /api/v1/portal/admin/organizer-applications` and `POST /api/v1/portal/admin/organizer-applications/{id}/decision`.
+- Organizers create draft events and submit them using `POST /api/v1/portal/events/{id}/submit`; admins review via `GET /api/v1/portal/admin/events/pending` and `POST /api/v1/portal/admin/events/{id}/decision`.
+- `GET /api/v1/portal/dashboard`, `GET /api/v1/portal/organizer/analytics`, notifications, event reviews, refund requests, refunds administration, audit logs, sales reporting, and maintenance cleanup are under `/api/v1/portal`.
+- Ticket validation is `POST /api/v1/portal/tickets/check-in` with JSON `{"ticket_code":"..." }`. It is single-use; an organizer can validate only a ticket for their own event.
+- Public poster upload is restricted to organizer/admin accounts and writes image files under `backend/uploads/posters`. Configure `PUBLIC_API_URL` for generated absolute URLs.
+- `GET /api/v1/integrations/tmdb/search` and `POST /api/v1/integrations/tmdb/import` need a TMDB key/token. `GET /api/v1/integrations/ticketmaster/events?city=Mumbai` needs a Ticketmaster key. `POST /api/v1/integrations/ai/event-description` needs an OpenAI API key.
+- Optional outbound password reset email uses SMTP settings. In-app notifications are stored in MySQL; email/SMS push notifications are not connected.
+- `POST /api/v1/portal/bookings/{id}/refund-request` opens a review. Admins can approve/reject; processing a demo-provider refund updates only the demo records. Real Razorpay refunds are not enabled.
+- The per-process rate limiter is a single-instance safeguard, not a substitute for shared Redis/edge throttling on multi-worker production deployments.
+
+## Environment integrations
+
+Copy the optional variables from `backend/.env.example` into your private `.env`:
+`TMDB_READ_ACCESS_TOKEN`, `TMDB_API_KEY`, `TICKETMASTER_API_KEY`, `OPENAI_API_KEY`, and SMTP host/port/user/password/from details. Keep every secret on the backend. Do not paste secrets into GitHub issues, frontend environment files, or chat.

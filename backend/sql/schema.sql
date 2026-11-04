@@ -105,6 +105,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   starts_at DATETIME NOT NULL,
   ends_at DATETIME NOT NULL,
   base_price DECIMAL(10,2) NOT NULL,
+  tax_percent DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  convenience_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   status ENUM('scheduled','cancelled','completed') NOT NULL DEFAULT 'scheduled',
   CONSTRAINT ck_session_time CHECK (ends_at > starts_at),
   CONSTRAINT ck_session_price CHECK (base_price >= 0),
@@ -126,6 +128,7 @@ CREATE TABLE IF NOT EXISTS seats (
   row_label VARCHAR(10) NOT NULL,
   seat_number INT NOT NULL,
   seat_type ENUM('standard','premium','recliner') NOT NULL DEFAULT 'standard',
+  seat_category VARCHAR(40) NOT NULL DEFAULT 'Standard',
   CONSTRAINT uq_seat_position UNIQUE (venue_space_id, row_label, seat_number),
   CONSTRAINT ck_seat_number CHECK (seat_number > 0),
   INDEX ix_seats_venue_space_id (venue_space_id),
@@ -154,13 +157,43 @@ CREATE TABLE IF NOT EXISTS bookings (
   session_id INT NOT NULL,
   status ENUM('pending','confirmed','cancelled','expired') NOT NULL DEFAULT 'pending',
   total_amount DECIMAL(10,2) NOT NULL,
+  subtotal_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  tax_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  convenience_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  expires_at DATETIME NULL,
+  ticket_code VARCHAR(64) NULL UNIQUE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX ix_bookings_user_id (user_id),
   INDEX ix_bookings_session_id (session_id),
   INDEX ix_bookings_status (status),
+  INDEX ix_bookings_expiry (expires_at),
   CONSTRAINT fk_bookings_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
   CONSTRAINT fk_bookings_session FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS show_seat_holds (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  session_id INT NOT NULL,
+  seat_id INT NOT NULL,
+  user_id INT NOT NULL,
+  expires_at DATETIME NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uq_show_seat_hold UNIQUE (session_id, seat_id),
+  INDEX ix_show_seat_holds_expiry (expires_at),
+  INDEX ix_show_seat_holds_user (user_id),
+  CONSTRAINT fk_show_seat_holds_session FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+  CONSTRAINT fk_show_seat_holds_seat FOREIGN KEY (seat_id) REFERENCES seats(id) ON DELETE CASCADE,
+  CONSTRAINT fk_show_seat_holds_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS booking_tickets (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  booking_id INT NOT NULL UNIQUE,
+  ticket_code VARCHAR(64) NOT NULL UNIQUE,
+  issued_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX ix_booking_tickets_code (ticket_code),
+  CONSTRAINT fk_booking_tickets_booking FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS booking_items (
