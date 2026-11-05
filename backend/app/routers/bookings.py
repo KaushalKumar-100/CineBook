@@ -166,6 +166,14 @@ def release_seat_holds(
 
 @router.post("", response_model=BookingOut, status_code=status.HTTP_201_CREATED)
 def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, Depends(get_current_user)]):
+    # Demo checkout is intentionally restricted to local development. Until a real
+    # provider/manual-verification adapter is configured, production must fail
+    # closed rather than creating a fake successful payment or issuing a ticket.
+    if settings.app_env.lower() in {"production", "prod"} or not settings.demo_mode:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Checkout is not enabled: configure and verify a payment provider before accepting real bookings.",
+        )
     # Validate allocation choice before creating any records.
     has_seats = payload.seat_ids is not None
     has_ticket = payload.ticket_type_id is not None
