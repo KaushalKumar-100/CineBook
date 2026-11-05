@@ -7,7 +7,7 @@ from sqlalchemy import inspect
 from app import models  # noqa: F401
 from app.config import get_settings
 from app.database import Base, engine, test_connection
-from app.routers import auth, bookings, catalog, integrations, manage, maps, portal
+from app.routers import auth, bookings, catalog, integrations, manage, maps, portal, tickets
 
 settings = get_settings()
 
@@ -57,3 +57,5 @@ app.include_router(bookings.router, prefix=settings.api_prefix)
 app.include_router(portal.router, prefix=settings.api_prefix)
 app.include_router(integrations.router, prefix=settings.api_prefix)
 app.include_router(maps.router, prefix=settings.api_prefix)
+
+app.include_router(tickets.router, prefix=settings.api_prefix)
