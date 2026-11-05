@@ -28,10 +28,17 @@ class Settings(BaseSettings):
     razorpay_key_id: str = ""
     razorpay_key_secret: str = ""
     razorpay_webhook_secret: str = ""
+    payment_provider: str = "disabled"
+    payment_enabled: bool = False
     seat_hold_minutes: int = 8
     tmdb_read_access_token: str = ""
     tmdb_api_key: str = ""
     ticketmaster_api_key: str = ""
+    google_maps_api_key: str = ""
+    google_maps_map_id: str = ""
+    brevo_api_key: str = ""
+    brevo_sender_email: str = ""
+    brevo_sender_name: str = "CineBook"
     allevents_api_key: str = ""
     openai_api_key: str = ""
     openai_model: str = "gpt-4.1-mini"
@@ -41,6 +48,7 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from_email: str = ""
     smtp_use_tls: bool = True
+    email_provider: str = "smtp"
     frontend_reset_url: str = "http://localhost:5173/reset-password"
     public_api_url: str = "http://127.0.0.1:8000"
     rate_limit_per_minute: int = 120
