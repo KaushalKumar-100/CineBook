@@ -162,3 +162,8 @@ Payment integration is intentionally not enabled yet. `PAYMENT_ENABLED=false` an
 - Run Alembic migrations as a deployment step; do not rely on `create_all` in production.
 - Configure HTTPS, database backups, monitoring, log redaction, and alerting.
 - Verify provider API terms, commercial permissions, and event ticketing rights before listing external events for sale.
+
+
+### Frontend production flags
+
+Copy `frontend/.env.example` to `frontend/.env`. Keep `VITE_ENABLE_DEMO_DATA=false` and `VITE_DEMO_CHECKOUT_ENABLED=false` in production. Demo catalogue fallbacks and simulated checkout are available only when explicitly enabled for local testing. The browser Maps key must be restricted by HTTP referrer and API in Google Cloud.
