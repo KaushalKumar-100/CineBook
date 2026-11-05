@@ -38,6 +38,9 @@ def test_expected_api_routes_are_registered():
         "/api/v1/sessions/{session_id}/availability",
         "/api/v1/bookings",
         "/api/v1/bookings/me",
+        "/api/v1/payments/config",
+        "/api/v1/payments/razorpay/verify",
+        "/api/v1/payments/razorpay/webhook",
         "/api/v1/manage/ticket-types",
         "/api/v1/manage/seats/bulk",
     }
@@ -82,6 +85,7 @@ def test_demo_payment_methods_are_explicitly_limited():
         "demo_upi_qr",
         "demo_card",
         "demo_netbanking",
+        "razorpay",
     ]
     assert properties["payment_method"]["default"] == "demo_upi"
 

@@ -87,7 +87,7 @@ class BookingCreate(BaseModel):
     ticket_type_id: int | None = None
     quantity: int = Field(default=1, ge=1, le=20)
     seat_ids: list[int] | None = Field(default=None, max_length=20)
-    payment_method: Literal["demo_upi", "demo_upi_qr", "demo_card", "demo_netbanking"] = "demo_upi"
+    payment_method: Literal["demo_upi", "demo_upi_qr", "demo_card", "demo_netbanking", "razorpay"] = "demo_upi"
 
 class SeatHoldCreate(BaseModel):
     session_id: int
@@ -114,6 +114,13 @@ class BookingOut(BaseModel):
     expires_at: datetime | None = None
     ticket_code: str | None = None
     model_config = ConfigDict(from_attributes=True)
+
+class RazorpayOrderOut(BaseModel):
+    booking: BookingOut
+    order_id: str
+    amount: int
+    currency: str = "INR"
+    key_id: str
 
 class PaymentOut(BaseModel):
     id: int

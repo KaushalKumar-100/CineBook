@@ -8,6 +8,17 @@ import {
 } from "lucide-react";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+
+function loadRazorpayScript() {
+  if (window.Razorpay) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
 // Place the real merchant payment QR image at frontend/public/payment-qr.png.
 const PAYMENT_QR_IMAGE_URL = "/payment-qr.png";
 
@@ -246,6 +257,7 @@ export default function App() {
   const [bookingStep, setBookingStep] = useState("select");
   const [bookingResult, setBookingResult] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("demo_upi");
+  const [razorpayConfig, setRazorpayConfig] = useState({ enabled: false, keyId: "" });
   const [paymentQrUnavailable, setPaymentQrUnavailable] = useState(false);
   const [bookingAccepted, setBookingAccepted] = useState(false);
   const [holdExpiresAt, setHoldExpiresAt] = useState(null);
@@ -258,6 +270,12 @@ export default function App() {
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsError, setBookingsError] = useState("");
   const [cancellingBookingId, setCancellingBookingId] = useState(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/v1/payments/config`).then((response) => response.ok ? response.json() : null)
+      .then((config) => setRazorpayConfig({ enabled: Boolean(config?.razorpay_enabled), keyId: config?.razorpay_key_id || "" }))
+      .catch(() => setRazorpayConfig({ enabled: false, keyId: "" }));
+  }, []);
 
   useEffect(() => {
     const fromStorage = localStorage.getItem("cinebook-saved");
@@ -606,9 +624,35 @@ export default function App() {
     setSelected(null);
   }
 
+  async function showConfirmedBooking(data, message) {
+    setBookingResult(data);
+    setHoldExpiresAt(null);
+    setTicketQrDataUrl("");
+    setTicketQrError("");
+    setTicketQrLoading(Boolean(data.ticket_code));
+    setBookingStep("confirmed");
+    setBookings((current) => [data, ...current.filter((booking) => booking.id !== data.id)]);
+    setNotice(message);
+    if (data.ticket_code) {
+      try {
+        const qrResponse = await fetch(`${API_BASE}/api/v1/bookings/${data.id}/ticket/qr`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const qrData = await qrResponse.json().catch(() => ({}));
+        if (!qrResponse.ok) throw new Error(qrData.detail || "Could not generate the ticket QR code.");
+        setTicketQrDataUrl(qrData.qr_code_data_url || "");
+        if (!qrData.qr_code_data_url) throw new Error("The ticket QR response did not include an image.");
+      } catch (qrError) {
+        setTicketQrError(qrError.message || "Ticket was issued, but its QR image could not be loaded.");
+      } finally {
+        setTicketQrLoading(false);
+      }
+    }
+  }
+
   async function submitBooking() {
     if (!bookingAccepted) {
-      setBookingError("Please accept the demo booking terms before continuing.");
+      setBookingError(`Please accept the ${paymentMethod === "razorpay" ? "payment" : "demo booking"} terms before continuing.`);
       return;
     }
     if (!token) {
@@ -647,30 +691,50 @@ export default function App() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.detail || "Booking failed. Please check availability and retry.");
-      setBookingResult(data);
-      setHoldExpiresAt(null);
-      setTicketQrDataUrl("");
-      setTicketQrError("");
-      setTicketQrLoading(Boolean(data.ticket_code));
-      setBookingStep("confirmed");
-      setBookings((current) => [data, ...current.filter((booking) => booking.id !== data.id)]);
-      setNotice(`Booking ${data.booking_reference} confirmed. Demo payment only; no money was charged.`);
-
-      if (data.ticket_code) {
-        try {
-          const qrResponse = await fetch(`${API_BASE}/api/v1/bookings/${data.id}/ticket/qr`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const qrData = await qrResponse.json().catch(() => ({}));
-          if (!qrResponse.ok) throw new Error(qrData.detail || "Could not generate the ticket QR code.");
-          setTicketQrDataUrl(qrData.qr_code_data_url || "");
-          if (!qrData.qr_code_data_url) throw new Error("The ticket QR response did not include an image.");
-        } catch (qrError) {
-          setTicketQrError(qrError.message || "Ticket was issued, but its QR image could not be loaded.");
-        } finally {
-          setTicketQrLoading(false);
-        }
+      if (paymentMethod === "razorpay") {
+        if (!data.order_id || !data.booking || !razorpayConfig.keyId) throw new Error("Razorpay order response was incomplete. Contact support before retrying.");
+        const loaded = await loadRazorpayScript();
+        if (!loaded) throw new Error("Razorpay Checkout could not be loaded. Your booking hold will expire automatically.");
+        const checkout = new window.Razorpay({
+          key: razorpayConfig.keyId,
+          order_id: data.order_id,
+          amount: data.amount,
+          currency: data.currency || "INR",
+          name: "CineBook",
+          description: `Booking ${data.booking.booking_reference}`,
+          prefill: { name: currentUser?.name || "", email: currentUser?.email || "", contact: currentUser?.phone || "" },
+          notes: { booking_reference: data.booking.booking_reference },
+          theme: { color: "#ec4b35" },
+          handler: async (paymentResponse) => {
+            setBookingBusy(true);
+            try {
+              const verifiedResponse = await fetch(`${API_BASE}/api/v1/payments/razorpay/verify`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                  razorpay_order_id: paymentResponse.razorpay_order_id,
+                  razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                  razorpay_signature: paymentResponse.razorpay_signature,
+                }),
+              });
+              const verified = await verifiedResponse.json().catch(() => ({}));
+              if (!verifiedResponse.ok) throw new Error(verified.detail || "Payment is not confirmed yet. Check your bookings before retrying.");
+              if (verified.payment_status === "refunded" || verified.booking.status === "expired") throw new Error("Your payment arrived after the seat hold expired. CineBook requested a refund and did not issue a ticket.");
+              if (verified.booking.status !== "confirmed" || !verified.booking.ticket_code) throw new Error("Payment received; ticket confirmation is still processing. Check your bookings shortly.");
+              await showConfirmedBooking(verified.booking, `Payment verified. Booking ${verified.booking.booking_reference} is confirmed.`);
+            } catch (verifyError) {
+              setBookingError(verifyError.message || "Payment verification failed. Do not pay again until you check your booking status.");
+            } finally {
+              setBookingBusy(false);
+            }
+          },
+          modal: { ondismiss: () => setBookingError("Checkout closed. Your booking is pending and the seat hold will expire automatically if payment is not completed.") },
+        });
+        checkout.on("payment.failed", (failure) => setBookingError(failure?.error?.description || "Payment failed. No ticket was issued."));
+        checkout.open();
+        return;
       }
+      await showConfirmedBooking(data, `Booking ${data.booking_reference} confirmed. Demo payment only; no money was charged.`);
     } catch (error) {
       setBookingError(error.message || "Booking failed.");
     } finally {
@@ -871,13 +935,14 @@ export default function App() {
                   {holdExpiresAt && <div><span>Seat reservation</span><b>Held until {new Date(holdExpiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</b></div>}
                   {currentUser?.phone && <div><span>Phone</span><b>{currentUser.phone}</b></div>}
                 </div>
-                <h4>Choose a demo payment method</h4>
+                <h4>{razorpayConfig.enabled ? "Choose payment method" : "Choose a demo payment method"}</h4>
                 <div className="payment-methods">
                   {[
                     ["demo_upi", "UPI", "Simulated UPI approval"],
                     ["demo_upi_qr", "Scan UPI QR", "Show merchant QR · demo confirmation only"],
                     ["demo_card", "Credit / Debit Card", "Test card flow · no card data"],
                     ["demo_netbanking", "Netbanking", "Demo bank redirect"],
+                    ...(razorpayConfig.enabled ? [["razorpay", "Razorpay", "Secure payment · UPI, cards and netbanking"]] : []),
                   ].map(([value, label, detail]) => <button type="button" key={value} className={paymentMethod === value ? "payment-method selected" : "payment-method"} onClick={() => setPaymentMethod(value)}><span className="payment-radio">{paymentMethod === value ? "●" : ""}</span><span><b>{label}</b><small>{detail}</small></span></button>)}
                 </div>
                 {paymentMethod === "demo_upi_qr" && <div className="merchant-qr-panel">
@@ -903,14 +968,14 @@ export default function App() {
                 </div>
                 {bookingError && <p className="form-error" role="alert">{bookingError}</p>}
                 <div className="demo-gateway-panel">
-                  <div><span className="gateway-lock">🔒 TEST GATEWAY</span><b>{paymentMethod === "demo_upi_qr" ? "UPI QR payment · demo" : paymentMethod === "demo_upi" ? "UPI payment simulation" : paymentMethod === "demo_card" ? "Card payment simulation" : "Netbanking simulation"}</b><small>Selected method: {paymentMethod.replace("demo_", "").replace("_", " ").toUpperCase()}</small></div>
+                  <div><span className="gateway-lock">{paymentMethod === "razorpay" ? "🔒 RAZORPAY CHECKOUT" : "🔒 TEST GATEWAY"}</span><b>{paymentMethod === "razorpay" ? "Secure Razorpay payment" : paymentMethod === "demo_upi_qr" ? "UPI QR payment · demo" : paymentMethod === "demo_upi" ? "UPI payment simulation" : paymentMethod === "demo_card" ? "Card payment simulation" : "Netbanking simulation"}</b><small>{paymentMethod === "razorpay" ? "Payment is verified by CineBook before tickets are issued." : `Selected method: ${paymentMethod.replace("demo_", "").replace("_", " ").toUpperCase()}`}</small></div>
                   <div className="gateway-amount">₹{bookingGrandTotal.toFixed(2)}<small>Amount due · INR</small></div>
                 </div>
-                <div className="demo-safe-note"><span>SIMULATED PAYMENT PAGE</span><p>This gateway is for project testing only. It does not contact a bank or payment network. Never enter real card numbers, CVV, UPI PIN, OTP or banking credentials.</p></div>
-                <label className="booking-terms"><input type="checkbox" checked={bookingAccepted} onChange={(event) => setBookingAccepted(event.target.checked)} /><span>I have reviewed the show details and price breakdown, and understand that this is a simulated booking.</span></label>
+                {paymentMethod !== "razorpay" && <div className="demo-safe-note"><span>SIMULATED PAYMENT PAGE</span><p>This gateway is for project testing only. It does not contact a bank or payment network. Never enter real card numbers, CVV, UPI PIN, OTP or banking credentials.</p></div>}
+                <label className="booking-terms"><input type="checkbox" checked={bookingAccepted} onChange={(event) => setBookingAccepted(event.target.checked)} /><span>{paymentMethod === "razorpay" ? "I have reviewed the session details and final amount before paying." : "I have reviewed the show details and price breakdown, and understand that this is a simulated booking."}</span></label>
                 <div className="demo-gateway-actions">
-                  <button className="primary-button demo-pay-button" disabled={bookingBusy || !bookingAccepted} onClick={submitBooking}>{bookingBusy ? "Processing simulated payment…" : `Simulate successful payment · ₹${bookingGrandTotal.toFixed(2)}`}</button>
-                  <button className="demo-fail-button" disabled={bookingBusy} onClick={simulateDemoPaymentFailure}>Simulate payment failure</button>
+                  <button className="primary-button demo-pay-button" disabled={bookingBusy || !bookingAccepted} onClick={submitBooking}>{bookingBusy ? "Preparing checkout…" : paymentMethod === "razorpay" ? `Pay securely · ₹${bookingGrandTotal.toFixed(2)}` : `Simulate successful payment · ₹${bookingGrandTotal.toFixed(2)}`}</button>
+                  {paymentMethod !== "razorpay" && <button className="demo-fail-button" disabled={bookingBusy} onClick={simulateDemoPaymentFailure}>Simulate payment failure</button>}
                 </div>
                 <div className="modal-actions">
                   <button className="secondary-button" disabled={bookingBusy} onClick={releaseCurrentSeatHold}>← Back to seats</button>
@@ -921,7 +986,7 @@ export default function App() {
                 <div className="ticket-success-mark">✓</div>
                 <span className="mini-label">CINEBOOK E-TICKET</span>
                 <h3>Booking confirmed!</h3>
-                <p>Your demo ticket has been issued. Keep this code for check-in simulation.</p>
+                <p>{paymentMethod === "razorpay" ? "Your verified ticket has been issued. Keep this code for venue check-in." : "Your demo ticket has been issued. Keep this code for check-in simulation."}</p>
                 <div className="issued-ticket-code">{bookingResult.ticket_code || bookingResult.booking_reference}</div>
                 <div className="ticket-qr-panel">
                   {ticketQrLoading ? <p className="booking-hint">Generating your secure ticket QR code…</p> :
@@ -937,10 +1002,10 @@ export default function App() {
                   <div><span>Experience</span><b>{selected.title}</b></div>
                   <div><span>Show</span><b>{activeSession ? `${prettyDate(activeSession.starts_at)} · ${prettyTime(activeSession.starts_at)}` : `Session #${bookingResult.session_id}`}</b></div>
                   <div><span>Tickets / seats</span><b>{sessionAvailability?.booking_mode === "seats" ? selectedSeatRows.map((seat) => `${seat.row_label}${seat.seat_number}`).join(", ") : `${bookingQuantity} × ${selectedTicket?.name || "Ticket"}`}</b></div>
-                  <div><span>Total paid (simulation)</span><b>₹{Number(bookingResult.total_amount).toFixed(2)}</b></div>
-                  <div><span>Payment status</span><b className="payment-approved">Demo payment successful</b></div>
+                  <div><span>{paymentMethod === "razorpay" ? "Total paid" : "Total paid (simulation)"}</span><b>₹{Number(bookingResult.total_amount).toFixed(2)}</b></div>
+                  <div><span>Payment status</span><b className="payment-approved">{paymentMethod === "razorpay" ? "Razorpay payment verified" : "Demo payment successful"}</b></div>
                 </div>
-                <div className="demo-safe-note"><span>NO MONEY CHARGED</span><p>This is a simulated ticket for your CineBook project. It is not valid for entry to the real venue.</p></div>
+                {paymentMethod !== "razorpay" && <div className="demo-safe-note"><span>NO MONEY CHARGED</span><p>This is a simulated ticket for your CineBook project. It is not valid for entry to the real venue.</p></div>}
                 <div className="modal-actions">
                   <button className="secondary-button" onClick={() => window.print()}>Print ticket</button>
                   <button className="primary-button" onClick={() => { setSelected(null); setBookingStep("select"); setBookingResult(null); }}>Back to discovery</button>

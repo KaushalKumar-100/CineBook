@@ -18,6 +18,7 @@ from app.schemas import (
     ProfileUpdate, RefundDecision, RefundRequestCreate, ReviewCreate, UserStatusUpdate,
     TicketCheckIn,
 )
+from app.razorpay import create_refund
 
 router = APIRouter(prefix="/portal", tags=["Customer, Organizer and Admin Portal"])
 
@@ -428,7 +429,7 @@ def request_refund(booking_id: int, payload: RefundRequestCreate, db: DbSession,
 
 
 @router.get("/admin/refunds")
-def list_refunds(db: DbSession, _: Annotated[User, Depends(require_roles("admin"))], status_filter: str = Query(default="requested", pattern="^(requested|approved|rejected|processed|all)$")):
+def list_refunds(db: DbSession, _: Annotated[User, Depends(require_roles("admin"))], status_filter: str = Query(default="requested", pattern="^(requested|approved|rejected|processing|processed|failed|all)$")):
     stmt = select(RefundRequest).order_by(RefundRequest.created_at.desc())
     if status_filter != "all":
         stmt = stmt.where(RefundRequest.status == status_filter)
@@ -436,6 +437,7 @@ def list_refunds(db: DbSession, _: Annotated[User, Depends(require_roles("admin"
     return {"items": [{
         "id": item.id, "booking_id": item.booking_id, "user": public_user(item.user),
         "reason": item.reason, "amount": item.amount, "status": item.status,
+        "payment_provider": db.get(Payment, item.payment_id).provider if item.payment_id and db.get(Payment, item.payment_id) else None,
         "created_at": item.created_at, "resolution_note": item.resolution_note,
     } for item in items]}
 
@@ -455,11 +457,23 @@ def decide_refund(refund_id: int, payload: RefundDecision, db: DbSession, admin:
         payment = db.get(Payment, item.payment_id) if item.payment_id else None
         if not payment:
             raise HTTPException(status_code=409, detail="Payment record not found")
-        if payment.provider != "demo_upi" and payment.provider != "demo_upi_qr" and payment.provider != "demo_card" and payment.provider != "demo_netbanking":
-            raise HTTPException(status_code=409, detail="A live provider refund adapter is not configured; do not mark a real refund as processed")
-        payment.status = "refunded"
-        item.booking.status = "cancelled"
-        item.status = "processed"
+        if payment.provider == "razorpay":
+            if payment.status != "succeeded" or not payment.provider_payment_id:
+                raise HTTPException(status_code=409, detail="Only a captured Razorpay payment can be refunded")
+            provider_refund = create_refund(payment.provider_payment_id, item.amount, item.booking.booking_reference)
+            provider_status = provider_refund.get("status")
+            if provider_status not in {"pending", "processed", "failed"}:
+                raise HTTPException(status_code=502, detail="Razorpay returned an unknown refund status")
+            item.status = "processing" if provider_status == "pending" else provider_status
+            item.booking.status = "cancelled" if provider_status in {"pending", "processed"} else "confirmed"
+            if provider_status == "processed":
+                payment.status = "refunded"
+        else:
+            if payment.provider not in {"demo_upi", "demo_upi_qr", "demo_card", "demo_netbanking"}:
+                raise HTTPException(status_code=409, detail="This payment provider does not support demo refunds")
+            payment.status = "refunded"
+            item.booking.status = "cancelled"
+            item.status = "processed"
     item.reviewed_by = admin.id
     item.reviewed_at = datetime.now()
     item.resolution_note = payload.note

@@ -168,7 +168,8 @@ def session_availability(session_id: int, db: DbSession):
 
     booked_seat_ids = set(db.scalars(
         select(BookingItem.seat_id).join(Booking, BookingItem.booking_id == Booking.id)
-        .where(Booking.session_id == session_id, Booking.status == "confirmed",
+        .where(Booking.session_id == session_id,
+               ((Booking.status == "confirmed") | ((Booking.status == "pending") & (Booking.expires_at > datetime.now()))),
                BookingItem.seat_id.is_not(None))).all())
     seats = db.scalars(select(Seat).where(
         Seat.venue_space_id == session.venue_space_id
@@ -181,7 +182,8 @@ def session_availability(session_id: int, db: DbSession):
     for ticket in ticket_types:
         sold = db.scalar(select(func.coalesce(func.sum(BookingItem.quantity), 0))
             .join(Booking, BookingItem.booking_id == Booking.id)
-            .where(Booking.session_id == session_id, Booking.status == "confirmed",
+            .where(Booking.session_id == session_id,
+                   ((Booking.status == "confirmed") | ((Booking.status == "pending") & (Booking.expires_at > datetime.now()))),
                    BookingItem.ticket_type_id == ticket.id)) or 0
         ticket_availability.append({
             "id": ticket.id, "name": ticket.name, "description": ticket.description,

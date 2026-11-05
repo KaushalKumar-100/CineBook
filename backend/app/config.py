@@ -77,6 +77,9 @@ class Settings(BaseSettings):
                 raise ValueError("Wildcard CORS is not allowed in production.")
             if not self.allowed_origins:
                 raise ValueError("Configure at least one explicit frontend CORS origin.")
+            razorpay_values = (self.razorpay_key_id, self.razorpay_key_secret, self.razorpay_webhook_secret)
+            if any(razorpay_values) and not all(razorpay_values):
+                raise ValueError("Configure the Razorpay key ID, key secret, and webhook secret together in production.")
         if self.seat_hold_minutes < 1 or self.seat_hold_minutes > 30:
             raise ValueError("SEAT_HOLD_MINUTES must be between 1 and 30.")
         if self.rate_limit_per_minute < 1:

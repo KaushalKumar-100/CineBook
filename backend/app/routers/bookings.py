@@ -13,7 +13,8 @@ from sqlalchemy.exc import IntegrityError
 from app.config import get_settings
 from app.dependencies import DbSession, get_current_user
 from app.models import Booking, BookingItem, BookingTicket, Event, Movie, Payment, Seat, SessionEvent, ShowSeatHold, TicketType, User, VenueSpace
-from app.schemas import BookingCreate, BookingOut, PaymentOut, SeatHoldCreate
+from app.schemas import BookingCreate, BookingOut, PaymentOut, RazorpayOrderOut, SeatHoldCreate
+from app.razorpay import amount_in_paise, configured, create_order
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 settings = get_settings()
@@ -73,7 +74,7 @@ def hold_seats(
             .join(Booking, BookingItem.booking_id == Booking.id)
             .where(
                 Booking.session_id == session.id,
-                Booking.status == "confirmed",
+                ((Booking.status == "confirmed") | ((Booking.status == "pending") & (Booking.expires_at > datetime.now()))),
                 BookingItem.seat_id.in_(seat_ids),
             )
             .with_for_update()
@@ -164,7 +165,7 @@ def release_seat_holds(
     return None
 
 
-@router.post("", response_model=BookingOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=BookingOut | RazorpayOrderOut, status_code=status.HTTP_201_CREATED)
 def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, Depends(get_current_user)]):
     # Validate allocation choice before creating any records.
     has_seats = payload.seat_ids is not None
@@ -175,6 +176,9 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
         raise HTTPException(status_code=422, detail="seat_ids cannot be empty")
     if has_seats and payload.quantity != 1:
         raise HTTPException(status_code=422, detail="Use quantity=1 when booking assigned seats")
+    is_live_payment = payload.payment_method == "razorpay"
+    if is_live_payment and not configured():
+        raise HTTPException(status_code=503, detail="Razorpay is not configured. Choose the clearly labelled demo checkout.")
 
     try:
         # Serialize booking attempts for the same scheduled session on MySQL/InnoDB.
@@ -198,11 +202,40 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
         if has_ticket and session.booking_mode != "general_admission":
             raise HTTPException(status_code=422, detail="This session uses assigned seats")
 
+        # Reuse an active Razorpay order for an identical retry. This lets a
+        # customer retry a declined attempt without reserving inventory twice.
+        if is_live_payment:
+            pending = db.scalars(select(Booking).where(
+                Booking.user_id == user.id,
+                Booking.session_id == session.id,
+                Booking.status == "pending",
+                Booking.expires_at > datetime.now(),
+            ).order_by(Booking.id.desc()).with_for_update()).all()
+            requested_seats = sorted(payload.seat_ids or [])
+            for existing in pending:
+                lines = db.scalars(select(BookingItem).where(BookingItem.booking_id == existing.id)).all()
+                same_selection = (
+                    sorted(line.seat_id for line in lines if line.seat_id is not None) == requested_seats
+                    if has_seats else
+                    len(lines) == 1 and lines[0].ticket_type_id == payload.ticket_type_id and lines[0].quantity == payload.quantity
+                )
+                existing_payment = db.scalar(select(Payment).where(
+                    Payment.booking_id == existing.id, Payment.provider == "razorpay"
+                ).with_for_update())
+                if same_selection and existing_payment and existing_payment.status == "initiated" and existing_payment.provider_reference:
+                    return RazorpayOrderOut(
+                        booking=existing,
+                        order_id=existing_payment.provider_reference,
+                        amount=amount_in_paise(existing.total_amount),
+                        key_id=settings.razorpay_key_id,
+                    )
+
         booking = Booking(
             booking_reference=token_urlsafe(12).replace("-", "").replace("_", "").upper()[:22],
-            user_id=user.id, session_id=session.id, status="confirmed",
+            user_id=user.id, session_id=session.id, status="pending" if is_live_payment else "confirmed",
             total_amount=Decimal("0.00"), subtotal_amount=Decimal("0.00"),
             tax_amount=Decimal("0.00"), convenience_amount=Decimal("0.00"),
+            expires_at=datetime.now() + timedelta(minutes=10) if is_live_payment else None,
         )
         db.add(booking)
         db.flush()
@@ -218,7 +251,8 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
             if len(seats) != len(seat_ids):
                 raise HTTPException(status_code=422, detail="A seat does not belong to this session space")
             taken = db.scalars(select(BookingItem.seat_id).join(Booking, BookingItem.booking_id == Booking.id)
-                .where(Booking.session_id == session.id, Booking.status == "confirmed",
+                .where(Booking.session_id == session.id,
+                       ((Booking.status == "confirmed") | ((Booking.status == "pending") & (Booking.expires_at > datetime.now()))),
                        BookingItem.seat_id.in_(seat_ids)).with_for_update()).all()
             if taken:
                 raise HTTPException(status_code=409, detail="One or more seats are already booked")
@@ -257,7 +291,8 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
             # this session across concurrent MySQL/InnoDB booking transactions.
             sold = db.scalar(select(func.coalesce(func.sum(BookingItem.quantity), 0))
                 .join(Booking, BookingItem.booking_id == Booking.id)
-                .where(Booking.session_id == session.id, Booking.status == "confirmed",
+                .where(Booking.session_id == session.id,
+                       ((Booking.status == "confirmed") | ((Booking.status == "pending") & (Booking.expires_at > datetime.now()))),
                        BookingItem.ticket_type_id == ticket.id)) or 0
             if sold + payload.quantity > ticket.capacity:
                 raise HTTPException(status_code=409, detail="Not enough tickets remaining")
@@ -272,11 +307,14 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
         booking.tax_amount = tax_amount
         booking.convenience_amount = convenience_amount
         booking.total_amount = grand_total
-        ticket_code = token_urlsafe(18).replace("-", "").replace("_", "").upper()[:32]
-        booking.ticket_code = ticket_code
-        db.add(BookingTicket(booking_id=booking.id, ticket_code=ticket_code))
-        # Demo-only payment confirmation. No card/UPI credentials are collected.
-        db.add(Payment(booking_id=booking.id, provider=payload.payment_method, amount=grand_total, status="succeeded"))
+        if is_live_payment:
+            db.add(Payment(booking_id=booking.id, provider="razorpay", amount=grand_total, status="initiated"))
+        else:
+            ticket_code = token_urlsafe(18).replace("-", "").replace("_", "").upper()[:32]
+            booking.ticket_code = ticket_code
+            db.add(BookingTicket(booking_id=booking.id, ticket_code=ticket_code))
+            # Demo-only payment confirmation. No card/UPI credentials are collected.
+            db.add(Payment(booking_id=booking.id, provider=payload.payment_method, amount=grand_total, status="succeeded"))
         if has_seats:
             db.execute(delete(ShowSeatHold).where(
                 ShowSeatHold.session_id == session.id,
@@ -285,6 +323,23 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
             ))
         db.commit()
         db.refresh(booking)
+        if is_live_payment:
+            try:
+                order = create_order(grand_total, booking.booking_reference)
+            except HTTPException:
+                booking.status = "expired"
+                payment = db.scalar(select(Payment).where(Payment.booking_id == booking.id, Payment.provider == "razorpay"))
+                if payment:
+                    payment.status = "failed"
+                db.commit()
+                raise
+            payment = db.scalar(select(Payment).where(Payment.booking_id == booking.id, Payment.provider == "razorpay"))
+            payment.provider_reference = order["id"]
+            db.commit()
+            return RazorpayOrderOut(
+                booking=booking, order_id=order["id"], amount=amount_in_paise(grand_total),
+                key_id=settings.razorpay_key_id,
+            )
         return booking
     except HTTPException:
         db.rollback()
@@ -296,6 +351,12 @@ def create_booking(payload: BookingCreate, db: DbSession, user: Annotated[User, 
 
 @router.get("/me", response_model=list[BookingOut])
 def my_bookings(db: DbSession, user: Annotated[User, Depends(get_current_user)]):
+    db.execute(
+        Booking.__table__.update()
+        .where(Booking.user_id == user.id, Booking.status == "pending", Booking.expires_at <= datetime.now())
+        .values(status="expired")
+    )
+    db.commit()
     return db.scalars(select(Booking).where(Booking.user_id == user.id).order_by(Booking.created_at.desc())).all()
 
 
@@ -344,8 +405,14 @@ def cancel_booking(booking_id: int, db: DbSession, user: Annotated[User, Depends
         raise HTTPException(status_code=404, detail="Booking not found")
     if booking.status != "confirmed":
         raise HTTPException(status_code=409, detail="Only confirmed bookings can be cancelled")
+    payment = db.scalar(select(Payment).where(
+        Payment.booking_id == booking.id, Payment.status == "succeeded"
+    ).order_by(Payment.id.desc()).with_for_update())
+    if payment and payment.provider == "razorpay":
+        raise HTTPException(status_code=409, detail="Request a refund review from your dashboard. A real payment cannot be cancelled without provider confirmation.")
     booking.status = "cancelled"
-    db.add(Payment(booking_id=booking.id, provider="demo", amount=booking.total_amount, status="refunded"))
+    if payment:
+        payment.status = "refunded"
     db.commit()
     db.refresh(booking)
     return booking

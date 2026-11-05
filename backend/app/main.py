@@ -7,7 +7,7 @@ from sqlalchemy import inspect
 from app import models  # noqa: F401
 from app.config import get_settings
 from app.database import Base, engine, test_connection
-from app.routers import auth, bookings, catalog, integrations, manage, portal
+from app.routers import auth, bookings, catalog, integrations, manage, payments, portal
 
 settings = get_settings()
 
@@ -20,11 +20,15 @@ async def lifespan(_: FastAPI):
     yield
 
 
+is_production = settings.app_env.lower() in {"production", "prod"}
 app = FastAPI(
     title=settings.app_name,
     description="Movie, major-event and local-event discovery and ticket-booking API.",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url=None if is_production else "/docs",
+    redoc_url=None if is_production else "/redoc",
+    openapi_url=None if is_production else "/openapi.json",
 )
 app.add_middleware(
     CORSMiddleware,
@@ -37,7 +41,7 @@ app.add_middleware(
 
 @app.get("/", tags=["System"])
 def home():
-    return {"message": "Welcome to CineBook API", "status": "running", "docs": "/docs"}
+    return {"message": "Welcome to CineBook API", "status": "running", "docs": None if is_production else "/docs"}
 
 
 @app.get("/health/db", tags=["System"])
@@ -54,5 +58,6 @@ app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(catalog.router, prefix=settings.api_prefix)
 app.include_router(manage.router, prefix=settings.api_prefix)
 app.include_router(bookings.router, prefix=settings.api_prefix)
+app.include_router(payments.router, prefix=settings.api_prefix)
 app.include_router(portal.router, prefix=settings.api_prefix)
 app.include_router(integrations.router, prefix=settings.api_prefix)

@@ -223,6 +223,7 @@ CREATE TABLE IF NOT EXISTS payments (
   booking_id INT NOT NULL,
   provider VARCHAR(60) NOT NULL DEFAULT 'demo',
   provider_reference VARCHAR(150) NULL UNIQUE,
+  provider_payment_id VARCHAR(150) NULL UNIQUE,
   amount DECIMAL(10,2) NOT NULL,
   status ENUM('initiated','succeeded','failed','refunded') NOT NULL DEFAULT 'initiated',
   paid_at DATETIME NULL,
