@@ -45,3 +45,10 @@ def test_production_accepts_explicit_frontend_origin():
     )
     assert settings.app_env == "production"
     assert settings.cors_allowed_origins == "https://cinebook.example"
+
+
+def test_local_database_defaults_match_cinebook_setup():
+    settings = Settings(_env_file=None)
+    assert settings.db_name == "cinebook_db"
+    assert settings.db_user == "root"
+    assert settings.db_host == "127.0.0.1"

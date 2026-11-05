@@ -15,7 +15,7 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Edit `backend/.env` locally. Set your MySQL user/password and replace `SECRET_KEY` with a long random secret. Keep `.env` private.
+Edit `backend/.env` locally. The template targets your existing `cinebook_db` database and uses `DB_USER=root` with an empty `DB_PASSWORD` as a starting point. Enter your existing MySQL root password in `DB_PASSWORD` (leave it empty only if your root account has no password). The app reads `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD`; it does **not** read a `DATABASE_URL` variable. Keep `.env` private. For production, create a dedicated least-privilege MySQL account instead of using root.
 
 Create the database by running `backend/sql/schema.sql` in MySQL Workbench (it creates `cinebook_db` and the current tables). For an existing CineBook database, first take a backup and then run migrations `backend/sql/migrations/002_venue_booking_flow.sql` and `backend/sql/migrations/003_platform_modules.sql` in that order. Migration 003 adds organizer applications, moderation statuses, profile reset tokens, notifications, refunds, reviews, audit logs, ticket check-in and reporting views; it also adds TMDB IDs and explicit event session booking modes. The optional `backend/sql/seed_demo.sql` adds a small legacy starter dataset. For the complete sample catalogue and bookable demo inventory, use the interactive Python seeder below after configuring `.env`. On an existing database, apply both migrations `002` and `003` after taking a backup before running the seeder.
 
@@ -167,3 +167,10 @@ Payment integration is intentionally not enabled yet. `PAYMENT_ENABLED=false` an
 ### Frontend production flags
 
 Copy `frontend/.env.example` to `frontend/.env`. Keep `VITE_ENABLE_DEMO_DATA=false` and `VITE_DEMO_CHECKOUT_ENABLED=false` in production. Demo catalogue fallbacks and simulated checkout are available only when explicitly enabled for local testing. The browser Maps key must be restricted by HTTP referrer and API in Google Cloud.
+
+
+### Printable PDF tickets
+
+- `GET /api/v1/bookings/{booking_id}/ticket/pdf` downloads a printable PDF pass for a confirmed booking. The signed-in booking owner or an administrator can download it.
+- The PDF includes the booking reference, ticket code, venue/session details and QR code. Its QR contains only the unguessable ticket code used by the existing single-use check-in endpoint.
+- Install the added dependency with `pip install -r requirements.txt`. Demo bookings remain demo-only and are not valid admission to real venues.
