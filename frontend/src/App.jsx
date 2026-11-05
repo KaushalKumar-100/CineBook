@@ -10,6 +10,8 @@ import {
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 // Place the real merchant payment QR image at frontend/public/payment-qr.png.
 const PAYMENT_QR_IMAGE_URL = "/payment-qr.png";
+const ENABLE_DEMO_DATA = import.meta.env.VITE_ENABLE_DEMO_DATA === "true";
+const DEMO_CHECKOUT_ENABLED = import.meta.env.VITE_DEMO_CHECKOUT_ENABLED === "true";
 
 const demoMovies = [
   { id: "dm1", title: "Drishyam The Conclusion", language: "Hindi", duration_minutes: 150, certificate: "UA16+", synopsis: "The Salgaonkar family tries to protect the secret behind a past killing as new evidence and a determined Crime Branch officer threaten to reopen the case.", poster_url: "https://imgix.hoyts.com.au/mx/posters/au/drishyam-the-conclusion-3d42e8ed.jpg", release_date: "2026-10-02", demo: true },
@@ -358,14 +360,18 @@ export default function App() {
       if (cancelled) return;
       setApiOnline(Boolean(healthData?.status === "connected"));
       setCities(Array.isArray(cityData) ? cityData : []);
-      const availableEvents = Array.isArray(eventData) && eventData.length ? eventData : demoEvents;
+      const availableEvents = Array.isArray(eventData) ? eventData : [];
       const eventTitles = new Set(availableEvents.map((item) => String(item.title || "").trim().toLowerCase()));
-      const posterOnlyEvents = concertPosterPreviews.filter((item) => !eventTitles.has(item.title.trim().toLowerCase()));
-      setEvents([...availableEvents, ...posterOnlyEvents]);
+      const posterOnlyEvents = ENABLE_DEMO_DATA
+        ? concertPosterPreviews.filter((item) => !eventTitles.has(item.title.trim().toLowerCase()))
+        : [];
+      setEvents([...availableEvents, ...(ENABLE_DEMO_DATA && availableEvents.length === 0 ? demoEvents : []), ...posterOnlyEvents]);
 
       const availableMovies = Array.isArray(movieData) ? movieData : [];
       const movieTitles = new Set(availableMovies.map((item) => String(item.title || "").trim().toLowerCase()));
-      const missingPosterMovies = demoMovies.filter((item) => !movieTitles.has(item.title.trim().toLowerCase()));
+      const missingPosterMovies = ENABLE_DEMO_DATA
+        ? demoMovies.filter((item) => !movieTitles.has(item.title.trim().toLowerCase()))
+        : [];
       setMovies([...availableMovies, ...missingPosterMovies]);
       setLoading(false);
     }
@@ -853,7 +859,7 @@ export default function App() {
                 <p className="demo-payment-note">Preview inventory and prices are seeded for this academic demo. Availability is not a live venue feed.</p>
               </>}
 
-              {bookingStep === "checkout" && <div className="checkout-panel">
+              {bookingStep === "checkout" && (DEMO_CHECKOUT_ENABLED ? <div className="checkout-panel">
                 <div className="demo-gateway-heading">
                   <div className="demo-gateway-logo"><Ticket size={20} /></div>
                   <div><span className="mini-label">CINEBOOK SECURE CHECKOUT</span><h3>CineBook DemoPay</h3><p>Test payment gateway · no real money is involved</p></div>
@@ -915,7 +921,17 @@ export default function App() {
                 <div className="modal-actions">
                   <button className="secondary-button" disabled={bookingBusy} onClick={releaseCurrentSeatHold}>← Back to seats</button>
                 </div>
-              </div>}
+              </div> : <div className="checkout-panel">
+                <div className="demo-gateway-heading">
+                  <div className="demo-gateway-logo"><Ticket size={20} /></div>
+                  <div><span className="mini-label">CINEBOOK CHECKOUT</span><h3>Payments are being configured</h3><p>Online booking is temporarily unavailable while secure payment verification is integrated.</p></div>
+                </div>
+                <p className="booking-hint">Your selection has not been charged, reserved as a confirmed booking, or converted into a ticket. Please return to discovery and try again later.</p>
+                <div className="modal-actions">
+                  <button className="secondary-button" onClick={() => { setBookingStep("select"); setBookingError(""); }}>← Back to selection</button>
+                  <button className="secondary-button" disabled={bookingBusy} onClick={releaseCurrentSeatHold}>Release seat hold</button>
+                </div>
+              </div>)}
 
               {bookingStep === "confirmed" && bookingResult && <div className="ticket-confirmation" id="printable-ticket">
                 <div className="ticket-success-mark">✓</div>
