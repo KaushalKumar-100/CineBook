@@ -246,6 +246,7 @@ export default function App() {
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState("");
   const [availableSessions, setAvailableSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState("");
   const [sessionAvailability, setSessionAvailability] = useState(null);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
@@ -418,6 +419,7 @@ export default function App() {
     setSelected(item);
     setBookingError("");
     setAvailableSessions([]);
+    setSessionsLoading(false);
     setSelectedSessionId("");
     setSessionAvailability(null);
     setSelectedSeats([]);
@@ -431,7 +433,29 @@ export default function App() {
     setDemoPaymentReference("");
     setPaymentMethod("demo_upi");
     setBookingAccepted(false);
+    if (item.poster_preview) {
+      setSessionsLoading(true);
+      try {
+        const response = await fetch(`${API_BASE}/api/v1/events?q=${encodeURIComponent(item.title)}`);
+        if (!response.ok) throw new Error("Could not check for an active CineBook session.");
+        const listings = await response.json();
+        const liveListing = (Array.isArray(listings) ? listings : []).find((listing) =>
+          listing.title?.trim().toLowerCase() === item.title.trim().toLowerCase() && listing.session_id
+        );
+        if (liveListing) {
+          await bookItem(liveListing);
+          return;
+        }
+        setBookingError("No current CineBook showtime or ticket inventory is available for this archived poster. Try again after a valid session is added.");
+      } catch (error) {
+        setBookingError(error.message || "Could not check for an active CineBook session.");
+      } finally {
+        setSessionsLoading(false);
+      }
+      return;
+    }
     if (item.demo) return;
+    setSessionsLoading(true);
     try {
       const isEvent = item.event_type === "local" || item.event_type === "major";
       const query = isEvent ? `event_id=${item.id}` : `movie_id=${item.id}`;
@@ -443,6 +467,8 @@ export default function App() {
       else setBookingError("No upcoming sessions are available for this listing yet.");
     } catch (error) {
       setBookingError(error.message || "Could not load sessions.");
+    } finally {
+      setSessionsLoading(false);
     }
   }
 
@@ -853,10 +879,15 @@ export default function App() {
           <div className="modal-content">
             <span className="mini-label">{selected.demo ? "SAMPLE PREVIEW" : selected.description?.startsWith("CINEBOOK TEST LISTING ONLY.") ? "DEMO BOOKING SESSION" : selected.language || selected.category?.name || "CINEBOOK"}</span>
             <h2 id="modal-title">{selected.title}</h2>
-            <p>{selected.description || selected.synopsis || "Explore the details and upcoming sessions for this listing."}</p>
+            {(!availableSessions.length || sessionsLoading || selected.demo || bookingStep !== "select") && <p>{selected.description || selected.synopsis || "Explore the details and upcoming sessions for this listing."}</p>}
             {selected.event_type && <div className="modal-fact"><MapPin size={16} />{selected.venue?.name || "Venue details"} · {selected.city?.name || "City details"}</div>}
 
-            {selected.demo ? <div className="preview-note"><Sparkles size={17} /><span>{selected.poster_preview ? "Archived poster preview. The supplied poster marks this event as closed, so this card is for catalogue display only and has no current showtime or ticket availability." : "Sample catalogue preview. This listing is not connected to a bookable cinema session yet."}</span></div> : <>
+            {selected.demo ? <>
+              <div className="preview-note"><Sparkles size={17} /><span>{selected.poster_preview ? "Archived poster preview. CineBook checks for a matching active session before showing ticket options; this poster alone does not confirm current availability." : "Sample catalogue preview. This listing is not connected to a bookable cinema session yet."}</span></div>
+              {selected.poster_preview && <button type="button" className="primary-button preview-booking-button" disabled={sessionsLoading} onClick={() => bookItem(selected)}>{sessionsLoading ? "Checking showtimes…" : "Find showtime & tickets"}</button>}
+              {bookingError && <p className="form-error" role="alert">{bookingError}</p>}
+            </> : <>
+              {selected.description?.startsWith("CINEBOOK TEST LISTING ONLY.") && <div className="preview-note"><Sparkles size={17} /><span>Demo-only showtime and inventory for testing. This is not a real event or valid admission ticket.</span></div>}
               <div className="booking-stepper" aria-label="Booking progress">
                 <span className={bookingStep === "select" ? "active" : bookingStep !== "select" ? "done" : ""}>1 <b>Show & seats</b></span>
                 <i />
