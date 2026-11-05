@@ -856,7 +856,7 @@ export default function App() {
                   <button className="primary-button" disabled={availabilityLoading || bookingBusy || !sessionAvailability || bookingSubtotal <= 0} onClick={continueToCheckout}>{bookingBusy ? "Reserving seats…" : "Continue to checkout"} <ChevronRight size={17} /></button>
                   <button className="secondary-button" onClick={() => { toggleSaved(selected.id); setNotice(saved.includes(selected.id) ? "Removed from saved listings." : "Saved for later."); }}><Heart size={16} /> Save</button>
                 </div>
-                <p className="demo-payment-note">Preview inventory and prices are seeded for this academic demo. Availability is not a live venue feed.</p>
+                {ENABLE_DEMO_DATA && <p className="demo-payment-note">Preview inventory and prices are seeded for this academic demo. Availability is not a live venue feed.</p>}
               </>}
 
               {bookingStep === "checkout" && (DEMO_CHECKOUT_ENABLED ? <div className="checkout-panel">
