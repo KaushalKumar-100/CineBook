@@ -167,3 +167,10 @@ Payment integration is intentionally not enabled yet. `PAYMENT_ENABLED=false` an
 ### Frontend production flags
 
 Copy `frontend/.env.example` to `frontend/.env`. Keep `VITE_ENABLE_DEMO_DATA=false` and `VITE_DEMO_CHECKOUT_ENABLED=false` in production. Demo catalogue fallbacks and simulated checkout are available only when explicitly enabled for local testing. The browser Maps key must be restricted by HTTP referrer and API in Google Cloud.
+
+
+### Printable PDF tickets
+
+- `GET /api/v1/bookings/{booking_id}/ticket/pdf` downloads a printable PDF pass for a confirmed booking. The signed-in booking owner or an administrator can download it.
+- The PDF includes the booking reference, ticket code, venue/session details and QR code. Its QR contains only the unguessable ticket code used by the existing single-use check-in endpoint.
+- Install the added dependency with `pip install -r requirements.txt`. Demo bookings remain demo-only and are not valid admission to real venues.
