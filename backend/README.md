@@ -130,3 +130,35 @@ The React header contains a Dashboard link for signed-in accounts. The API enfor
 
 Copy the optional variables from `backend/.env.example` into your private `.env`:
 `TMDB_READ_ACCESS_TOKEN`, `TMDB_API_KEY`, `TICKETMASTER_API_KEY`, `OPENAI_API_KEY`, and SMTP host/port/user/password/from details. Keep every secret on the backend. Do not paste secrets into GitHub issues, frontend environment files, or chat.
+
+## Production configuration and external services
+
+The backend environment template now includes placeholders for TMDB, Ticketmaster, Google Maps Platform, Brevo transactional email, SMTP fallback, storage, Redis, and future payment-provider configuration. Copy `.env.example` to `.env`; do not commit real credentials.
+
+### Google Maps
+
+Configure `GOOGLE_MAPS_API_KEY` on the backend. The API key must be restricted in Google Cloud to the required APIs and server-side usage. The following backend endpoints proxy Places/Geocoding requests so the server key is not sent to the browser:
+
+- `GET /api/v1/maps/places?input=...` — Places autocomplete.
+- `GET /api/v1/maps/places/{place_id}` — selected place details and coordinates.
+- `GET /api/v1/maps/geocode?address=...` — address-to-coordinate lookup.
+
+For an interactive browser map, configure a separate browser key as `VITE_GOOGLE_MAPS_API_KEY` in `frontend/.env`. Browser keys are public by design and must be restricted by HTTP referrer and API. The frontend template is `frontend/.env.example`.
+
+### Brevo
+
+Set `EMAIL_PROVIDER=brevo`, `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, and optionally `BREVO_SENDER_NAME`. Password-reset email uses Brevo's transactional email API. SMTP remains available as a fallback by configuring `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, and `SMTP_FROM_EMAIL`. Verify the sender/domain with Brevo before production use.
+
+### Payment safety status
+
+Payment integration is intentionally not enabled yet. `PAYMENT_ENABLED=false` and `PAYMENT_PROVIDER=disabled` are placeholders for the future payment adapter. In production (or whenever `DEMO_MODE=false`), the booking-creation endpoint fails closed with HTTP 503 until a verified payment provider/manual verification workflow is implemented. This prevents the existing local demo flow from recording a fake successful payment or issuing a valid ticket for an unverified transfer. Do not enable real customer sales until payment creation, verification/webhooks, refunds, idempotency, and reconciliation are implemented and tested.
+
+### Production deployment checklist
+
+- Set `APP_ENV=production`, `DEMO_MODE=false`, a unique `SECRET_KEY`, a dedicated least-privilege MySQL user, and exact `CORS_ALLOWED_ORIGINS`.
+- Keep backend secrets in the hosting provider's secret manager, not in Git or frontend variables.
+- Use managed object storage for uploads when running multiple instances; local uploads are not shared between instances.
+- Configure shared Redis/edge rate limiting before horizontal scaling; the in-process limiter is not distributed.
+- Run Alembic migrations as a deployment step; do not rely on `create_all` in production.
+- Configure HTTPS, database backups, monitoring, log redaction, and alerting.
+- Verify provider API terms, commercial permissions, and event ticketing rights before listing external events for sale.
