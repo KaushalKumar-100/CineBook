@@ -1,6 +1,7 @@
 import hashlib
 import smtplib
 import secrets
+import httpx
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 from typing import Annotated
@@ -47,16 +48,48 @@ def me(user: Annotated[User, Depends(get_current_user)]):
 
 def _send_password_reset_email(email: str, token: str) -> None:
     reset_url = f"{settings.frontend_reset_url}?token={token}"
-    message = EmailMessage()
-    message["Subject"] = "Reset your CineBook password"
-    message["From"] = settings.smtp_from_email or settings.smtp_username
-    message["To"] = email
-    message.set_content(
+    text_content = (
         "A password reset was requested for your CineBook account. "
         "Open this link within 30 minutes to choose a new password:\\n\\n"
         f"{reset_url}\\n\\n"
         "If you did not request this, you can ignore this message."
     )
+
+    # Prefer Brevo's transactional email API when configured. The API key stays
+    # server-side and is never exposed to the React application.
+    if settings.email_provider.lower() == "brevo" and settings.brevo_api_key and settings.brevo_sender_email:
+        try:
+            response = httpx.post(
+                "https://api.brevo.com/v3/smtp/email",
+                headers={
+                    "accept": "application/json",
+                    "api-key": settings.brevo_api_key,
+                    "content-type": "application/json",
+                },
+                json={
+                    "sender": {
+                        "name": settings.brevo_sender_name,
+                        "email": settings.brevo_sender_email,
+                    },
+                    "to": [{"email": email}],
+                    "subject": "Reset your CineBook password",
+                    "textContent": text_content,
+                },
+                timeout=12,
+            )
+            response.raise_for_status()
+            return
+        except httpx.HTTPError as exc:
+            raise RuntimeError("Brevo transactional email delivery failed") from exc
+
+    if not settings.smtp_host or not settings.smtp_from_email:
+        raise RuntimeError("No transactional email provider is configured")
+
+    message = EmailMessage()
+    message["Subject"] = "Reset your CineBook password"
+    message["From"] = settings.smtp_from_email
+    message["To"] = email
+    message.set_content(text_content)
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=12) as client:
         if settings.smtp_use_tls:
             client.starttls()
@@ -86,7 +119,7 @@ def request_password_reset(payload: PasswordResetRequest, db: DbSession):
         db.rollback()
         raise HTTPException(status_code=503, detail="Could not create a password reset request")
 
-    if settings.smtp_host and settings.smtp_from_email:
+    if (settings.email_provider.lower() == "brevo" and settings.brevo_api_key and settings.brevo_sender_email) or (settings.smtp_host and settings.smtp_from_email):
         try:
             _send_password_reset_email(user.email, raw_token)
         except Exception:
